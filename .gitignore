@@ -1,0 +1,9 @@
+# Index généré (contient le contenu des documents) — ne pas publier
+index.json
+
+# Documents privés — ne jamais committer de vraies données sensibles
+docs/*
+!docs/exemple-note-interne.md
+
+__pycache__/
+*.pyc

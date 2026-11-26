@@ -54,6 +54,25 @@ On dépose des documents dans `docs/` (`.txt`, `.md`, `.pdf`). Le programme les 
 
 Dépendances Python : `requests`, `pypdf` **uniquement** (aucune installation lourde).
 
+## Quel matériel pour faire tourner ça ?
+
+**La règle :** le modèle doit tenir dans la mémoire de la carte graphique (VRAM). Ici, `mistral` 7B quantifié pèse environ 4,4 Go et le modèle d'embeddings 0,3 Go : **8 Go de VRAM suffisent pour un utilisateur**. Plus de VRAM permet des modèles plus gros (meilleures réponses) ou plusieurs utilisateurs simultanés.
+
+| Usage | Matériel type | Mémoire | Prix indicatif | Ce que ça permet |
+|---|---|---|---|---|
+| Découverte | PC existant, sans carte graphique (16 Go de RAM) | — | 0 € | Fonctionne sur le processeur, mais nettement plus lent (non mesuré ici) |
+| Poste individuel | **RTX 3060 12 Go** | 12 Go | carte ~300–350 € · PC complet ~900–1 200 € *(estimation)* | Modèles 7–8B à l'aise |
+| Poste confortable | **RTX 5060 Ti 16 Go** | 16 Go | carte ~450–600 € · PC complet ~1 100–1 500 € *(estimation)* | Modèles 7–14B |
+| **Machine de test** | **RTX 3080 10 Go** | 10 Go | — | **Mesuré : ~13 s par question** (mistral 7B) |
+| Petite équipe | **RTX 3090 24 Go** d'occasion | 24 Go | carte ~800–1 200 € d'occasion, très variable | Modèles 14–32B, plusieurs utilisateurs (avec un serveur adapté comme vLLM) |
+| Alternative silencieuse | **Mac mini M4 Pro 48 Go** | 48 Go unifiée | ~2 900–3 200 € | Gros modèles, faible consommation (non testé ici) |
+
+Au-delà (service pour toute une structure, dizaines d'utilisateurs) : serveur équipé de GPU professionnels, sur devis.
+
+> **Prix relevés mi-novembre 2026** chez des revendeurs français. Le marché est tendu (pénurie de mémoire en 2026) : les prix varient fortement, à revérifier avant tout achat. Les prix de PC complets sont des estimations, pas des relevés.
+
+**Point clé pour un service public ou de santé :** une fois les modèles téléchargés, la machine n'a plus besoin d'Internet. Elle peut fonctionner sur un réseau isolé.
+
 ## Utilisation
 
 **1. Préparer Ollama** (une seule fois) :

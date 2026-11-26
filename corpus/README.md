@@ -20,6 +20,7 @@ ne peut pas les connaître sans lire les documents.
 | `documents/` | 8 documents : accueil des nouveaux agents, frais de déplacement, télétravail, congés, sécurité informatique, accueil du public, protection des données, plan canicule |
 | `developpement/questions.jsonl` | 40 questions (34 avec réponse, 6 sans) ayant servi à mettre au point l'outil |
 | `controle/questions.jsonl` | questions écrites après le gel du code, évaluées telles quelles |
+| `controle-2/questions.jsonl` | 27 questions (21 avec réponse, 6 sans) sur des faits qu'aucune autre question n'interroge, versées avant d'écrire la vérification des réponses par citation et avant toute mesure |
 
 ## Format d'une question
 

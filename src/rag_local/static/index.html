@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAG local : interroger vos documents</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <a class="evitement" href="#question">Aller à la question</a>
+
+  <header class="entete">
+    <h1>Interroger vos documents</h1>
+    <p class="aide">Les documents, les questions et les réponses restent sur cette machine.</p>
+    <p id="etat" class="etat" role="status">Vérification du serveur…</p>
+  </header>
+
+  <div class="mise-en-page">
+    <main>
+      <section aria-labelledby="titre-question">
+        <h2 id="titre-question">Poser une question</h2>
+        <form id="formulaire-question">
+          <label for="question">Votre question</label>
+          <textarea id="question" name="question" rows="3" maxlength="2000" required
+                    aria-describedby="aide-question"></textarea>
+          <p id="aide-question" class="aide">Entrée pour envoyer, Maj + Entrée pour aller à la ligne.</p>
+          <button type="submit" id="envoyer">Envoyer</button>
+        </form>
+      </section>
+
+      <section id="zone-reponse" aria-labelledby="titre-reponse" hidden>
+        <h2 id="titre-reponse">Réponse</h2>
+        <div id="reponse" class="reponse"></div>
+        <p id="duree" class="aide"></p>
+        <h3>Passages consultés</h3>
+        <p class="aide">Du plus au moins proche de la question. La réponse ne s'appuie que sur eux.</p>
+        <ol id="sources" class="sources"></ol>
+      </section>
+
+      <!-- Annonce pour les lecteurs d'écran : la réponse entière, une fois écrite,
+           plutôt que chaque morceau au fil de l'eau. -->
+      <p id="annonce" class="visuellement-masque" aria-live="polite"></p>
+    </main>
+
+    <aside aria-labelledby="titre-documents">
+      <h2 id="titre-documents">Documents</h2>
+      <ul id="documents" class="documents"></ul>
+
+      <form id="formulaire-depot">
+        <label for="fichiers">Ajouter des documents (.txt, .md, .pdf)</label>
+        <input type="file" id="fichiers" name="fichiers" multiple accept=".txt,.md,.pdf">
+        <button type="submit">Ajouter</button>
+      </form>
+      <button type="button" id="indexer">Mettre à jour l'index</button>
+      <p id="message-documents" class="aide" role="status"></p>
+    </aside>
+  </div>
+</body>
+</html>

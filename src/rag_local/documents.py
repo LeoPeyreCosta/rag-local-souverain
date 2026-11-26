@@ -36,9 +36,17 @@ def empreinte(texte: str) -> str:
     return hashlib.sha256(texte.encode("utf-8")).hexdigest()
 
 
+#: Recouvrement minimal entre deux passages voisins quand le suivant repart
+#: d'un début de ligne (caractères).
+RECOUVREMENT_MINIMAL = 20
+
+
 def decouper(texte: str, taille: int = 500, chevauchement: int = 80) -> list[str]:
     """Passages d'environ ``taille`` caractères qui se chevauchent, coupés de
-    préférence à une fin de ligne, sinon entre deux mots."""
+    préférence à une fin de ligne, sinon entre deux mots. Le passage suivant
+    reprend la fin du précédent, en repartant d'un début de ligne s'il y en a
+    un dans la zone de recouvrement (un titre entier plutôt que son dernier
+    mot), sinon d'un début de mot."""
     texte = re.sub(r"[ \t]+", " ", texte).strip()
     morceaux: list[str] = []
     debut, longueur = 0, len(texte)
@@ -54,8 +62,11 @@ def decouper(texte: str, taille: int = 500, chevauchement: int = 80) -> list[str
             morceaux.append(bloc)
         if coupe >= longueur:
             break
-        debut = max(coupe - chevauchement, debut + 1)
-        espace = texte.find(" ", debut)  # recommencer au début d'un mot
-        if espace != -1 and espace < coupe:
-            debut = espace + 1
+        reprise = max(coupe - chevauchement, debut + 1)
+        ligne = texte.find("\n", reprise, coupe - RECOUVREMENT_MINIMAL)
+        if ligne != -1:
+            debut = ligne + 1  # recommencer au début d'une ligne
+        else:
+            espace = texte.find(" ", reprise)  # sinon au début d'un mot
+            debut = espace + 1 if espace != -1 and espace < coupe else reprise
     return morceaux

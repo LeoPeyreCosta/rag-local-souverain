@@ -152,3 +152,12 @@ def test_corpus_bien_forme(fichier):
         texte = (CORPUS / "documents" / q["source"]).read_text(encoding="utf-8")
         assert any(normaliser(q["preuve"]) in normaliser(p) for p in decouper(texte)), q["id"]
         assert q["mots_cles"] and all(q["mots_cles"])
+
+
+def test_passages_reprennent_en_debut_de_ligne():
+    texte = (CORPUS / "documents" / "03-charte-teletravail.md").read_text(encoding="utf-8")
+    passages = decouper(texte)
+    lignes = {ligne.strip() for ligne in texte.splitlines() if ligne.strip()}
+    debuts_de_ligne = sum(any(p.startswith(ligne[:15]) for ligne in lignes) for p in passages[1:])
+    assert debuts_de_ligne == len(passages) - 1  # « ## Combien de jours », plus « jours »
+    assert not any(p.startswith("jours") for p in passages)

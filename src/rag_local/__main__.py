@@ -16,10 +16,17 @@ from pathlib import Path
 
 from .config import Reglages
 from .documents import lire_documents
-from .evaluation import lire_questions, mesurer_recherche, mesurer_reponses, tableau_recherche, tableau_reponses
+from .evaluation import (
+    lire_questions,
+    mesurer_recherche,
+    mesurer_reponses,
+    tableau_appuis,
+    tableau_recherche,
+    tableau_reponses,
+)
 from .index import Index
 from .ollama import ClientOllama
-from .reponse import est_un_refus, rechercher, repondre
+from .reponse import appuyer, est_un_refus, rechercher, repondre
 
 
 def _reglages(args: argparse.Namespace) -> Reglages:
@@ -80,7 +87,15 @@ def _demander(args: argparse.Namespace) -> None:
         texte.append(morceau)
         print(morceau, end="", flush=True)
     print("\n")
-    if not est_un_refus("".join(texte)):
+    reponse = "".join(texte)
+    if not est_un_refus(reponse):
+        _, appui = appuyer(recherche, reponse, client)
+        if appui:
+            passage = recherche.passages[appui.rang - 1][1]
+            cite = " ".join(passage.texte[appui.debut : appui.fin].split())
+            print(f"Phrase qui appuie la réponse [{appui.rang}] {passage.source} :\n  « {cite} »\n")
+        else:
+            print("Réponse non vérifiée : aucune phrase des passages n'a pu lui être rattachée.\n")
         print("Passages consultés (du plus au moins proche) :")
         for rang, (score, passage) in enumerate(recherche.passages, start=1):
             extrait = " ".join(passage.texte.split())[:80]
@@ -116,7 +131,7 @@ def _evaluer(args: argparse.Namespace) -> None:
         index, _ = Index.construire(documents, client, None, reglages.taille_passage, reglages.chevauchement)
         recherches.append(mesurer_recherche(questions, index, client, reglages.nb_passages))
         if not args.sans_reponses:
-            reponses.append(mesurer_reponses(questions, index, client, reglages.nb_passages))
+            reponses.append(mesurer_reponses(questions, index, client, reglages.nb_passages, not args.sans_appui))
     avec = sum(1 for q in questions if q["preuve"])
     print(f"{len(questions)} questions ({avec} avec réponse dans les documents), "
           f"{len(documents)} documents, {len(index.passages)} passages\n")
@@ -124,6 +139,9 @@ def _evaluer(args: argparse.Namespace) -> None:
     if reponses:
         print()
         print(tableau_reponses(reponses))
+        if not args.sans_appui:
+            print()
+            print(tableau_appuis(reponses))
     if args.details:
         for mesure in recherches:
             if mesure.rates:
@@ -133,6 +151,9 @@ def _evaluer(args: argparse.Namespace) -> None:
             if mesure_reponses.erreurs:
                 print(f"\nRéponses ({mesure_reponses.modele}) :")
                 print("\n".join(f"  - {e}" for e in mesure_reponses.erreurs))
+            if mesure_reponses.appuis:
+                print(f"\nAppuis ({mesure_reponses.modele}) :")
+                print("\n".join(f"  - {a}" for a in mesure_reponses.appuis))
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -158,6 +179,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--documents-evaluation", default="corpus/documents")
     p.add_argument("--embeddings", default="bge-m3,nomic-embed-text", help="modèles d'embeddings à comparer")
     p.add_argument("--sans-reponses", action="store_true", help="mesurer la recherche seulement (rapide)")
+    p.add_argument("--sans-appui", action="store_true", help="ne pas vérifier les réponses par une citation")
     p.add_argument("--details", action="store_true")
     p.set_defaults(f=_evaluer)
 

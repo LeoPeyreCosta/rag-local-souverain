@@ -93,6 +93,9 @@ PAIRES = [
     ("texte-sur-accent", "accent", 4.5),
     ("erreur", "fond", 4.5),
     ("erreur", "surface", 4.5),
+    ("alerte", "fond", 4.5),
+    ("alerte", "surface", 4.5),
+    ("texte", "surligne", 4.5),
     ("focus", "fond", 3.0),
     ("bordure", "fond", 3.0),
 ]

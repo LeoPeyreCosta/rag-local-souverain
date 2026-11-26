@@ -62,7 +62,10 @@ function afficherDocuments(documents) {
 }
 
 // --------------------------------------------------------------- question
+let passagesAffiches = [];
+
 function afficherSources(passages) {
+  passagesAffiches = passages;
   const liste = element("sources");
   liste.replaceChildren();
   for (const passage of passages) {
@@ -85,6 +88,44 @@ function afficherSources(passages) {
   }
 }
 
+// Les positions viennent de Python : elles comptent des caractères Unicode,
+// pas des unités UTF-16 comme les chaînes JavaScript, d'où Array.from.
+function morceau(texte, debut, fin) {
+  return Array.from(texte).slice(debut, fin).join("");
+}
+
+function afficherAppui(evenement) {
+  const zone = element("appui");
+  zone.replaceChildren();
+  zone.hidden = false;
+  if (!evenement.trouve) {
+    zone.className = "appui non-appuyee";
+    zone.textContent =
+      "Réponse non vérifiée : aucune phrase des passages n'a pu lui être rattachée. " +
+      "Lisez les passages avant de vous en servir.";
+    return;
+  }
+  const passage = passagesAffiches[evenement.rang - 1];
+  const cite = morceau(passage.texte, evenement.debut, evenement.fin);
+  zone.className = "appui";
+  const intro = document.createElement("p");
+  intro.textContent = `Phrase qui appuie la réponse (passage ${evenement.rang}, ${passage.source}) :`;
+  const citation = document.createElement("blockquote");
+  citation.textContent = cite;
+  zone.append(intro, citation);
+
+  // Dans la liste des passages : surligner la phrase et déplier le passage.
+  const li = element("sources").children[evenement.rang - 1];
+  const marque = document.createElement("mark");
+  marque.textContent = cite;
+  li.querySelector("blockquote").replaceChildren(
+    morceau(passage.texte, 0, evenement.debut),
+    marque,
+    morceau(passage.texte, evenement.fin),
+  );
+  li.querySelector("details").open = true;
+}
+
 async function poser(question) {
   const zone = element("zone-reponse");
   const reponse = element("reponse");
@@ -92,6 +133,8 @@ async function poser(question) {
   zone.hidden = false;
   reponse.textContent = "";
   reponse.className = "reponse";
+  element("appui").hidden = true;
+  element("appui").replaceChildren();
   element("duree").textContent = "Recherche dans les documents…";
   element("sources").replaceChildren();
   annonce.textContent = "";
@@ -135,11 +178,20 @@ function traiter(evenement) {
       // Le modèle commence souvent par une espace, visible avec white-space: pre-wrap.
       reponse.textContent += reponse.textContent ? evenement.contenu : evenement.contenu.trimStart();
       break;
-    case "fin":
+    case "verification":
+      element("duree").textContent = "Recherche de la phrase qui appuie la réponse…";
+      break;
+    case "appui":
+      afficherAppui(evenement);
+      break;
+    case "fin": {
       if (evenement.refus) reponse.classList.add("refus");
       element("duree").textContent = `Réponse en ${String(evenement.duree_s).replace(".", ",")} s.`;
-      element("annonce").textContent = `Réponse : ${reponse.textContent}`;
+      const appui = element("appui");
+      element("annonce").textContent =
+        `Réponse : ${reponse.textContent}` + (appui.hidden ? "" : ` ${appui.textContent}`);
       break;
+    }
     case "erreur":
       reponse.textContent = `Erreur : ${evenement.message}`;
       reponse.classList.add("erreur");

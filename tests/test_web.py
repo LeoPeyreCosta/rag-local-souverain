@@ -18,6 +18,7 @@ def application(tmp_path, documents):
     modeles = ModelesFactices(
         "conges agent jours annuels teletravail semaine limite",
         reponse=lambda msgs: ["Vous avez ", "droit à 25 jours."] if "congés" in msgs[-1]["content"][-60:] else [REFUS],
+        citation=lambda msgs: "Un agent a droit à 25 jours de congés annuels.",
     )
     return TestClient(creer_application(reglages, modeles))
 
@@ -46,13 +47,32 @@ def test_question_sans_index_puis_avec(application):
     reponse = application.post("/api/question", json={"question": "Combien de jours de congés ?"})
     assert reponse.headers["content-type"].startswith("application/x-ndjson")
     flux = evenements(reponse)
-    assert [e["type"] for e in flux] == ["sources", "texte", "texte", "fin"]
+    assert [e["type"] for e in flux] == ["sources", "texte", "texte", "verification", "appui", "fin"]
     assert flux[0]["passages"][0]["source"] == "conges.md"
     assert "".join(e["contenu"] for e in flux if e["type"] == "texte") == "Vous avez droit à 25 jours."
+    appui = flux[4]
+    assert appui["trouve"] is True and appui["rang"] == 1
+    assert flux[0]["passages"][0]["texte"][appui["debut"] : appui["fin"]] == "Un agent a droit à 25 jours de congés annuels"
     assert flux[-1]["refus"] is False
 
     flux = evenements(application.post("/api/question", json={"question": "Le salaire du maire ?"}))
+    assert [e["type"] for e in flux] == ["sources", "texte", "fin"]  # pas de citation pour un refus
     assert flux[-1] == {**flux[-1], "type": "fin", "refus": True}
+
+
+def test_reponse_non_appuyee_signalee(tmp_path, documents):
+    reglages = Reglages()
+    reglages.dossier_documents = documents
+    reglages.fichier_index = tmp_path / "index.json"
+    modeles = ModelesFactices(
+        "conges agent jours annuels teletravail semaine limite",
+        reponse=lambda msgs: ["Trente jours."],
+        citation=lambda msgs: "Les agents ont droit à trente jours de vacances.",
+    )
+    client = TestClient(creer_application(reglages, modeles))
+    client.post("/api/indexer")
+    flux = evenements(client.post("/api/question", json={"question": "Combien de jours de congés ?"}))
+    assert {"type": "appui", "trouve": False} in flux and flux[-1]["refus"] is False
 
 
 def test_question_vide_ou_trop_longue(application):

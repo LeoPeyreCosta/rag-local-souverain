@@ -13,7 +13,11 @@ Indicateurs :
   passages donnés au modèle (les 4 premiers) ;
 * **réponses** : juste, refus à tort (« je ne trouve pas » alors que
   l'information est là), fausse ; pour les questions sans réponse, refus
-  correct ou réponse inventée.
+  correct ou réponse inventée ;
+* **appui** (hors refus) : la citation donnée par le modèle a-t-elle été
+  retrouvée dans les passages ? Pour une réponse juste, contient-elle la
+  preuve ? Une réponse fausse ou inventée est-elle signalée comme non
+  appuyée ?
 """
 
 from __future__ import annotations
@@ -26,7 +30,7 @@ from pathlib import Path
 
 from .index import Index
 from .ollama import Modeles
-from .reponse import est_un_refus, normaliser, rechercher, repondre
+from .reponse import appuyer, est_un_refus, normaliser, rechercher, repondre
 
 
 def lire_questions(chemin: Path) -> list[dict]:
@@ -89,15 +93,30 @@ class MesureReponses:
     inventees: int = 0
     duree_s: float = 0.0
     erreurs: list[str] = field(default_factory=list)
+    # appui (mesuré si ``appui`` est vrai)
+    justes_appuyees: int = 0
+    appuis_sur_la_preuve: int = 0  # parmi les justes appuyées
+    erronees_signalees: int = 0  # réponses fausses ou inventées sans appui
+    duree_appui_s: float = 0.0
+    appuis: list[str] = field(default_factory=list)
+
+    @property
+    def erronees(self) -> int:
+        return self.fausses + self.inventees
 
 
-def mesurer_reponses(questions: list[dict], index: Index, modeles: Modeles, k: int = 4) -> MesureReponses:
+def mesurer_reponses(
+    questions: list[dict], index: Index, modeles: Modeles, k: int = 4, appui: bool = True
+) -> MesureReponses:
     mesure = MesureReponses(index.modele_embeddings)
-    depart = time.perf_counter()
     for question in questions:
-        texte = "".join(repondre(rechercher(question["question"], index, modeles, k), modeles)).strip()
+        depart = time.perf_counter()
+        recherche = rechercher(question["question"], index, modeles, k)
+        texte = "".join(repondre(recherche, modeles)).strip()
+        mesure.duree_s += time.perf_counter() - depart
         refus = est_un_refus(texte)
         resume = f"{question['id']} : {question['question']} → {texte}"
+        juste = False
         if question["preuve"]:
             mesure.avec_reponse += 1
             if refus:
@@ -105,6 +124,7 @@ def mesurer_reponses(questions: list[dict], index: Index, modeles: Modeles, k: i
                 mesure.erreurs.append("refus à tort — " + resume)
             elif correspond(texte, question["mots_cles"]):
                 mesure.justes += 1
+                juste = True
             else:
                 mesure.fausses += 1
                 mesure.erreurs.append("réponse fausse — " + resume)
@@ -115,8 +135,29 @@ def mesurer_reponses(questions: list[dict], index: Index, modeles: Modeles, k: i
             else:
                 mesure.inventees += 1
                 mesure.erreurs.append("réponse inventée — " + resume)
-    mesure.duree_s = time.perf_counter() - depart
+        if appui and not refus:
+            depart = time.perf_counter()
+            citation, trouve = appuyer(recherche, texte, modeles)
+            mesure.duree_appui_s += time.perf_counter() - depart
+            if trouve:
+                cite = " ".join(recherche.passages[trouve.rang - 1][1].texte[trouve.debut : trouve.fin].split())
+                sur_la_preuve = bool(question["preuve"]) and _se_recouvrent(cite, question["preuve"])
+                mesure.justes_appuyees += juste
+                mesure.appuis_sur_la_preuve += juste and sur_la_preuve
+                if not sur_la_preuve:
+                    etat = "juste" if juste else "erronée"
+                    mesure.appuis.append(f"{etat}, appuyée hors de la preuve — {resume} | « {cite} »")
+            else:
+                mesure.erronees_signalees += not juste
+                if juste:
+                    mesure.appuis.append(f"juste mais non appuyée — {resume} | citation : « {citation} »")
     return mesure
+
+
+def _se_recouvrent(citation: str, preuve: str) -> bool:
+    """La citation contient la preuve, ou l'inverse (citation partielle)."""
+    a, b = normaliser(citation), normaliser(preuve)
+    return bool(a and b) and (b in a or a in b)
 
 
 # ----------------------------------------------------------------- tableaux
@@ -149,5 +190,22 @@ def tableau_reponses(mesures: list[MesureReponses]) -> str:
             f"| {m.modele} | {_part(m.justes, m.avec_reponse)} | {m.refus_a_tort} | {m.fausses} "
             f"| {_part(m.refus_corrects, m.sans_reponse)} | {m.inventees} "
             f"| {m.duree_s / total:.1f} s |".replace(".", ",") if total else ""
+        )
+    return "\n".join(lignes)
+
+
+def tableau_appuis(mesures: list[MesureReponses]) -> str:
+    lignes = [
+        "| Embeddings | Réponses justes appuyées | dont citation contenant la preuve "
+        "| Réponses fausses ou inventées signalées | Durée de la vérification |",
+        "|---|---|---|---|---|",
+    ]
+    for m in mesures:
+        verifiees = m.justes + m.erronees
+        lignes.append(
+            f"| {m.modele} | {_part(m.justes_appuyees, m.justes)} "
+            f"| {_part(m.appuis_sur_la_preuve, m.justes_appuyees)} "
+            f"| {_part(m.erronees_signalees, m.erronees)} "
+            f"| {m.duree_appui_s / verifiees:.1f} s |".replace(".", ",") if verifiees else ""
         )
     return "\n".join(lignes)

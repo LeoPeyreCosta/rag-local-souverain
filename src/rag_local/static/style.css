@@ -9,6 +9,8 @@
   --texte-sur-accent: #ffffff;
   --bordure: #7c8591;
   --erreur: #b3261e;
+  --alerte: #8a4b00;
+  --surligne: #fff0a0;
   --focus: #0a58a8;
   color-scheme: light dark;
 }
@@ -23,6 +25,8 @@
     --texte-sur-accent: #0c1424;
     --bordure: #7d8692;
     --erreur: #ff9c94;
+    --alerte: #f5b45f;
+    --surligne: #5a4700;
     --focus: #84b6ff;
   }
 }
@@ -95,6 +99,17 @@ button[aria-disabled="true"] { opacity: .6; cursor: progress; }
 }
 .reponse.refus { border-left-color: var(--texte-secondaire); font-style: italic; }
 .reponse.erreur { border-left-color: var(--erreur); color: var(--erreur); }
+
+.appui {
+  margin: .5rem 0 0;
+  padding: .5rem 1rem;
+  border-left: 4px solid var(--bordure);
+}
+.appui p { margin: 0; }
+.appui blockquote { margin: .25rem 0 0; font-style: italic; }
+.appui.non-appuyee { border-left-color: var(--alerte); color: var(--alerte); font-weight: 600; }
+
+mark { background: var(--surligne); color: var(--texte); padding: 0 .1em; }
 
 .sources { padding-left: 1.25rem; }
 .sources li { margin-bottom: .75rem; }

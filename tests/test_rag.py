@@ -5,9 +5,18 @@ import pytest
 from conftest import ModelesFactices, question_posee
 
 from rag_local.documents import decouper, lire_documents
-from rag_local.evaluation import correspond, lire_questions, mesurer_recherche, mesurer_reponses
-from rag_local.index import Index
-from rag_local.reponse import REFUS, est_un_refus, messages, normaliser, rechercher, repondre
+from rag_local.evaluation import correspond, lire_questions, mesurer_recherche, mesurer_reponses, tableau_appuis
+from rag_local.index import Index, Passage
+from rag_local.reponse import (
+    REFUS,
+    appuyer,
+    est_un_refus,
+    localiser,
+    messages,
+    normaliser,
+    rechercher,
+    repondre,
+)
 
 
 # -------------------------------------------------------------- documents
@@ -95,6 +104,66 @@ def test_index_vide_donne_le_refus(modeles):
     assert "".join(repondre(recherche, modeles)) == REFUS
 
 
+# ------------------------------------------------------------------ appui
+PASSAGES = [
+    Passage("conges.md", "# Congés\n\nUn agent a droit à 25 jours de congés\nannuels par an.", [1.0]),
+    Passage("frais.md", "Une nuit d'hôtel est remboursée dans la limite de\n90 euros, et de 110 euros à Paris.", [1.0]),
+]
+
+
+def test_citation_retrouvee_mot_pour_mot():
+    appui = localiser("Un agent a droit à 25 jours de congés annuels par an.", PASSAGES)
+    assert appui and appui.rang == 1 and appui.ressemblance == 1.0
+    assert PASSAGES[0].texte[appui.debut : appui.fin] == "Un agent a droit à 25 jours de congés\nannuels par an"
+
+
+def test_citation_mal_recopiee_retrouvee_avec_le_texte_du_document():
+    # Le modèle a recopié « 110 » au lieu de « 90 » : c'est le texte du
+    # document qui est montré, pas celui du modèle.
+    appui = localiser("Une nuit d'hôtel est remboursée dans la limite de 110 euros, et de 110 euros à Paris", PASSAGES)
+    assert appui and appui.rang == 2
+    assert "90 euros" in PASSAGES[1].texte[appui.debut : appui.fin]
+
+
+def test_citation_precedee_du_numero_et_de_la_source():
+    appui = localiser("[1] (source : conges.md) Un agent a droit à 25 jours de congés annuels.", PASSAGES)
+    assert appui and appui.rang == 1
+    assert PASSAGES[0].texte[appui.debut :].startswith("Un agent")
+
+
+def test_citation_introuvable_trop_courte_ou_vide():
+    assert localiser("Les agents peuvent venir avec leur chien le vendredi.", PASSAGES) is None
+    assert localiser("25 jours", PASSAGES) is None  # se retrouverait n'importe où
+    assert localiser("", PASSAGES) is None
+
+
+def test_appui_demande_au_modele_puis_verifie(documents):
+    modeles = ModelesFactices(
+        "conges agent jours annuels teletravail semaine limite",
+        citation=lambda messages: "Un agent a droit à 25 jours de congés annuels.",
+    )
+    index, _ = Index.construire(lire_documents(documents), modeles)
+    recherche = rechercher("jours de congés", index, modeles, nombre=2)
+    citation, appui = appuyer(recherche, "25 jours.", modeles)
+    assert citation.startswith("Un agent") and appui and appui.rang == 1
+    echange = modeles.demandes_json[0]
+    assert echange[-2] == {"role": "assistant", "content": "25 jours."}  # la réponse à justifier
+    assert "mot pour mot" in echange[-1]["content"]
+
+    modeles.citation = lambda messages: "Le salaire du maire est confidentiel."
+    assert appuyer(recherche, "25 jours.", modeles)[1] is None
+    assert appuyer(rechercher("q", Index("faux"), modeles), "25 jours.", modeles) == ("", None)
+
+
+def test_citation_illisible(documents, modeles):
+    index, _ = Index.construire(lire_documents(documents), modeles)
+    recherche = rechercher("jours de congés", index, modeles)
+    modeles.repondre_json = lambda messages, schema: "pas du JSON"
+    assert appuyer(recherche, "25 jours.", modeles) == ("", None)
+    modeles.repondre_json = lambda messages, schema: '{"citation": 3}'
+    assert appuyer(recherche, "25 jours.", modeles) == ("", None)
+
+
 # ------------------------------------------------------------- évaluation
 def test_correspondance_des_mots_cles():
     assert correspond("Vous avez droit à 25 jours.", [["25"]])
@@ -117,9 +186,15 @@ def test_mesures_de_recherche_et_de_reponse(documents):
         "prime de fin d'année": [REFUS],
         "salaire du maire": ["Il gagne 3000 euros."],
     }
+    citations = {
+        "jours de congés annuels": "Un agent a droit à 25 jours de congés annuels.",  # juste, sur la preuve
+        "agent congés": "Les agents ont droit à trente jours de vacances.",  # fausse, citation introuvable
+        "salaire du maire": "Un agent a droit à 25 jours de congés annuels.",  # inventée, mais citation réelle
+    }
     modeles = ModelesFactices(
         "conges agent jours annuels teletravail semaine limite",
         reponse=lambda msgs: reponses[question_posee(msgs)],
+        citation=lambda msgs: citations[question_posee(msgs[:2])],
     )
     index, _ = Index.construire(lire_documents(documents), modeles)
     recherche = mesurer_recherche(questions, index, modeles, k=1)
@@ -128,6 +203,12 @@ def test_mesures_de_recherche_et_de_reponse(documents):
     assert (mesure.justes, mesure.refus_a_tort, mesure.fausses) == (1, 1, 1)
     assert (mesure.refus_corrects, mesure.inventees) == (1, 1)
     assert any(e.startswith("réponse inventée — q5") for e in mesure.erreurs)
+    assert (mesure.justes_appuyees, mesure.appuis_sur_la_preuve) == (1, 1)
+    assert (mesure.erronees, mesure.erronees_signalees) == (2, 1)  # q3 signalée, q5 pas
+    assert any(a.startswith("erronée, appuyée hors de la preuve — q5") for a in mesure.appuis)
+    assert "| faux | 1/1 (100%) | 1/1 (100%) | 1/2 (50%) |" in tableau_appuis([mesure])
+    sans = mesurer_reponses(questions, index, modeles, k=1, appui=False)
+    assert sans.justes == 1 and sans.justes_appuyees == 0 and len(modeles.demandes_json) == 3
 
 
 def test_preuve_absente_de_l_index(documents, modeles):

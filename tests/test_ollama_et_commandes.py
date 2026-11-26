@@ -66,6 +66,24 @@ def test_reponse_lue_au_fil_de_l_eau(monkeypatch):
     assert envois[0]["options"] == {"temperature": 0, "num_predict": 600}
 
 
+def test_reponse_contrainte_par_un_schema(monkeypatch):
+    envois = []
+
+    def post(url, json, timeout):
+        envois.append(json)
+        return ReponseHttp({"message": {"content": '{"citation": "Deux jours."}'}})
+
+    monkeypatch.setattr(ollama.requests, "post", post)
+    schema = {"type": "object"}
+    assert ClientOllama().repondre_json([{"role": "user", "content": "?"}], schema) == '{"citation": "Deux jours."}'
+    assert envois[0]["stream"] is False and envois[0]["format"] == schema
+    assert envois[0]["options"]["temperature"] == 0
+
+    monkeypatch.setattr(ollama.requests, "post", lambda url, json, timeout: ReponseHttp({"error": "model not found"}))
+    with pytest.raises(RuntimeError, match="model not found"):
+        ClientOllama().repondre_json([], schema)
+
+
 def test_erreur_d_ollama_dans_le_flux(monkeypatch):
     lignes = [json.dumps({"error": "model not found"}).encode()]
     monkeypatch.setattr(ollama.requests, "post", lambda url, json, stream, timeout: ReponseHttp(lignes=lignes))
@@ -91,6 +109,7 @@ class ClientFactice(ModelesFactices):
             reponse=lambda messages: ["Vous avez droit à 25 jours."]
             if "congés" in messages[-1]["content"][-40:] else [REFUS],
             modele_embeddings=modele_embeddings,
+            citation=lambda messages: "Un agent a droit à 25 jours de congés annuels.",
         )
         self.modele_llm = modele_llm
 
@@ -113,6 +132,8 @@ def test_indexer_demander_verifier(commande, capsys):
     commande("demander", "Combien de jours de congés ?")
     sortie = capsys.readouterr().out
     assert "Vous avez droit à 25 jours." in sortie and "[1] conges.md" in sortie
+    assert "Phrase qui appuie la réponse [1] conges.md" in sortie
+    assert "« Un agent a droit à 25 jours de congés annuels »" in sortie
     commande("demander", "Quel est le salaire du maire ?")
     sortie = capsys.readouterr().out
     assert REFUS in sortie and "Passages consultés" not in sortie  # pas de sources pour un refus
@@ -147,3 +168,4 @@ def test_evaluer_la_recherche(monkeypatch, tmp_path, documents, capsys):
     sortie = capsys.readouterr().out
     assert "| bge-m3 | 1/1 (100%) | 1/1 (100%) | 1,00 |" in sortie
     assert "| bge-m3 | 1/1 (100%) | 0 | 0 |" in sortie
+    assert "| bge-m3 | 1/1 (100%) | 1/1 (100%) | – |" in sortie  # appui juste, rien à signaler

@@ -2,7 +2,7 @@
 
     GET  /               la page
     GET  /api/etat       Ollama, modèles, index, documents
-    POST /api/question   la réponse en flux NDJSON : passages, texte, fin
+    POST /api/question   la réponse en flux NDJSON : passages, texte, appui, fin
     POST /api/documents  dépôt de fichiers .txt, .md, .pdf
     POST /api/indexer    mise à jour de l'index (seuls les documents modifiés sont recalculés)
 
@@ -28,7 +28,7 @@ from .config import Reglages
 from .documents import EXTENSIONS, lire_documents
 from .index import Index
 from .ollama import ClientOllama, Modeles
-from .reponse import est_un_refus, rechercher, repondre
+from .reponse import appuyer, est_un_refus, rechercher, repondre
 
 STATIQUE = Path(__file__).parent / "static"
 TAILLE_MAX = 20 * 1024 * 1024  # octets par fichier déposé
@@ -112,9 +112,18 @@ def creer_application(reglages: Reglages | None = None, modeles: Modeles | None 
                 for morceau in repondre(recherche, modeles):
                     texte.append(morceau)
                     yield _ligne({"type": "texte", "contenu": morceau})
+                reponse = "".join(texte)
+                refus = est_un_refus(reponse)
+                if not refus:
+                    yield _ligne({"type": "verification"})
+                    _, appui = appuyer(recherche, reponse, modeles)
+                    yield _ligne({"type": "appui", **(
+                        {"trouve": True, "rang": appui.rang, "debut": appui.debut, "fin": appui.fin}
+                        if appui else {"trouve": False}
+                    )})
                 yield _ligne({
                     "type": "fin",
-                    "refus": est_un_refus("".join(texte)),
+                    "refus": refus,
                     "duree_s": round(time.perf_counter() - depart, 1),
                 })
             except Exception as erreur:  # l'en-tête est déjà parti : on signale dans le flux

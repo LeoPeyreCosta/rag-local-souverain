@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 
 import pytest
@@ -14,11 +15,14 @@ class ModelesFactices:
     textes sont proches s'ils partagent des mots. La réponse est fournie par
     une fonction de la question et des extraits."""
 
-    def __init__(self, vocabulaire: str, reponse=None, modele_embeddings: str = "faux"):
+    def __init__(self, vocabulaire: str, reponse=None, modele_embeddings: str = "faux", citation=None):
         self.vocabulaire = normaliser(vocabulaire).split()
         self.modele_embeddings = modele_embeddings
         self.reponse = reponse or (lambda messages: ["Réponse ", "factice."])
+        #: Phrase que le faux modèle cite pour appuyer sa réponse.
+        self.citation = citation or (lambda messages: "")
         self.textes_vectorises: list[str] = []
+        self.demandes_json: list[list[dict]] = []
 
     def vecteurs(self, textes: list[str]) -> list[list[float]]:
         self.textes_vectorises += textes
@@ -27,6 +31,10 @@ class ModelesFactices:
 
     def repondre(self, messages):
         yield from self.reponse(messages)
+
+    def repondre_json(self, messages, schema):
+        self.demandes_json.append(messages)
+        return json.dumps({"citation": self.citation(messages)})
 
     def disponible(self) -> bool:
         return True

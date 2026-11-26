@@ -1,17 +1,26 @@
-"""Question → passages → réponse du modèle.
+"""Question → passages → réponse du modèle → phrase qui l'appuie.
 
 Les sources affichées viennent de la recherche, pas du modèle : un modèle de
 7 milliards de paramètres numérote souvent mal ses références. Quand la
 réponse n'est pas dans les passages, la consigne lui impose une phrase fixe,
 que le code sait reconnaître (et l'interface afficher comme telle).
+
+Une fois la réponse écrite, le modèle doit recopier la phrase des passages
+qui la justifie. Le code cherche cette citation dans les passages, à
+quelques mots près : retrouvée, elle est surlignée pour que l'agent vérifie
+la réponse d'un coup d'œil ; introuvable ou absente, la réponse est
+signalée comme non appuyée. Une citation retrouvée prouve que la phrase
+existe, pas que la réponse en découle.
 """
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from collections.abc import Iterator
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 from .index import Index, Passage
 from .ollama import Modeles
@@ -77,3 +86,94 @@ def repondre(recherche: Recherche, modeles: Modeles) -> Iterator[str]:
         yield REFUS
         return
     yield from modeles.repondre(messages(recherche.question, [p for _, p in recherche.passages]))
+
+
+# ------------------------------------------------------------------ appui
+#: Posée à la suite de la réponse, dans le même échange : Ollama réutilise
+#: alors les extraits déjà lus au lieu de les relire.
+CONSIGNE_APPUI = (
+    "Recopie mot pour mot, sans rien reformuler, la phrase des extraits qui justifie ta réponse, "
+    "sans le numéro ni la source de l'extrait. "
+    "Si aucune phrase des extraits ne la justifie, renvoie une citation vide."
+)
+#: Ce que le modèle recopie parfois de l'en-tête de l'extrait : « [1] (source : conges.md) ».
+_EN_TETE = re.compile(r"^\s*(?:\[\d+\]\s*)?(?:\(source\s*:[^)]*\)\s*)?")
+SCHEMA_APPUI = {
+    "type": "object",
+    "properties": {"citation": {"type": "string"}},
+    "required": ["citation"],
+}
+#: Ressemblance minimale (0 à 1) entre la citation et un morceau de passage :
+#: le modèle recopie rarement à la lettre (ponctuation, article oublié).
+SEUIL_APPUI = 0.8
+#: En dessous, une citation (« deux jours ») se retrouverait n'importe où.
+MOTS_MIN_APPUI = 4
+
+
+@dataclass
+class Appui:
+    """Morceau d'un passage qui appuie la réponse."""
+
+    rang: int  # 1 pour le passage le plus proche de la question
+    debut: int  # position dans le texte du passage, en caractères
+    fin: int
+    ressemblance: float
+
+
+def _mots(texte: str) -> list[tuple[str, int, int]]:
+    """Mots normalisés du texte, avec leur position dans le texte d'origine."""
+    mots = []
+    for trouve in re.finditer(r"[^\W_]+", texte):
+        for mot in normaliser(trouve.group()).split():
+            mots.append((mot, trouve.start(), trouve.end()))
+    return mots
+
+
+def localiser(citation: str, passages: list[Passage]) -> Appui | None:
+    """Le morceau de passage le plus proche de la citation, s'il l'est assez.
+
+    On compare la citation, mot à mot, à chaque fenêtre de longueur voisine
+    de chaque passage : quelques milliers de comparaisons pour 4 passages
+    de 500 caractères."""
+    cible = normaliser(_EN_TETE.sub("", citation, count=1)).split()
+    n = len(cible)
+    if n < MOTS_MIN_APPUI:
+        return None
+    comparateur = SequenceMatcher(None, autojunk=False)
+    comparateur.set_seq2(cible)
+    meilleur: Appui | None = None
+    score_max = 0.0
+    for rang, passage in enumerate(passages, start=1):
+        mots = _mots(passage.texte)
+        suite = [m for m, _, _ in mots]
+        for debut in range(len(suite)):
+            for taille in range(max(1, n - 3), min(n + 3, len(suite) - debut) + 1):
+                comparateur.set_seq1(suite[debut : debut + taille])
+                if comparateur.real_quick_ratio() <= score_max or comparateur.quick_ratio() <= score_max:
+                    continue
+                score = comparateur.ratio()
+                if score > score_max:
+                    score_max = score
+                    meilleur = Appui(rang, mots[debut][1], mots[debut + taille - 1][2], score)
+    return meilleur if meilleur and meilleur.ressemblance >= SEUIL_APPUI else None
+
+
+def demander_citation(recherche: Recherche, reponse: str, modeles: Modeles) -> str:
+    """La phrase des passages que le modèle donne pour justifier sa réponse."""
+    echanges = messages(recherche.question, [p for _, p in recherche.passages]) + [
+        {"role": "assistant", "content": reponse},
+        {"role": "user", "content": CONSIGNE_APPUI},
+    ]
+    try:
+        citation = json.loads(modeles.repondre_json(echanges, SCHEMA_APPUI)).get("citation", "")
+    except (ValueError, AttributeError):
+        return ""
+    return citation if isinstance(citation, str) else ""
+
+
+def appuyer(recherche: Recherche, reponse: str, modeles: Modeles) -> tuple[str, Appui | None]:
+    """(citation donnée par le modèle, morceau de passage retrouvé ou None)."""
+    if not recherche.passages:
+        return "", None
+    citation = demander_citation(recherche, reponse, modeles)
+    return citation, localiser(citation, [p for _, p in recherche.passages])

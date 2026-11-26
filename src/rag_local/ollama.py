@@ -19,6 +19,8 @@ class Modeles(Protocol):
 
     def repondre(self, messages: list[dict[str, str]]) -> Iterator[str]: ...
 
+    def repondre_json(self, messages: list[dict[str, str]], schema: dict) -> str: ...
+
 
 @dataclass
 class ClientOllama:
@@ -77,3 +79,22 @@ class ClientOllama:
                     yield texte
                 if morceau.get("done"):
                     break
+
+    def repondre_json(self, messages: list[dict[str, str]], schema: dict) -> str:
+        """Réponse d'un bloc, contrainte par un schéma JSON (texte JSON)."""
+        reponse = requests.post(
+            f"{self.url}/api/chat",
+            json={
+                "model": self.modele_llm,
+                "messages": messages,
+                "stream": False,
+                "format": schema,
+                "options": {"temperature": 0, "num_predict": 300},
+            },
+            timeout=600,
+        )
+        reponse.raise_for_status()
+        corps = reponse.json()
+        if corps.get("error"):
+            raise RuntimeError(corps["error"])
+        return corps.get("message", {}).get("content", "")

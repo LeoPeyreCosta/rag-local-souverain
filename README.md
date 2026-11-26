@@ -280,15 +280,34 @@ corpus/           documents fictifs, questions annotées, guide
 docs/             vos documents (non versionnés)
 ```
 
-## Tests
+## Tests et qualité
 
 ```sh
 python -m pip install -e ".[dev]"
-python -m pytest
+python -m pytest --cov
 ```
 
-Les tests remplacent Ollama par un faux client : ils tournent sans GPU ni
-réseau, et dans la CI sur Python 3.10 à 3.13.
+51 tests, sans GPU ni réseau : un faux client remplace Ollama. Ils couvrent
+l'index incrémental, la recherche, la reconnaissance du refus, l'API web
+(flux de réponse, dépôt de fichiers, noms de fichiers assainis),
+l'accessibilité de la page, la ligne de commande, et le contrat avec Ollama
+(requêtes d'embeddings par lots, lecture du flux de réponse, erreur
+signalée en cours de flux). La CI (Python 3.10 à 3.13) exécute aussi une
+analyse statique (pyflakes), une vérification des types (mypy) et exige au
+moins 85 % de couverture (96 % aujourd'hui).
+
+## Projets liés
+
+Quatre outils d'IA locale, construits et évalués de la même façon (corpus
+fictifs annotés, corpus de contrôle versé avant la mesure) :
+
+- [pseudonymisation-locale](https://github.com/LeoPeyreCosta/pseudonymisation-locale) :
+  masquer les données personnelles d'un document ;
+- [tri-demandes-local](https://github.com/LeoPeyreCosta/tri-demandes-local) :
+  orienter les demandes d'usagers d'une mairie et repérer les urgences ;
+- [compte-rendu-local](https://github.com/LeoPeyreCosta/compte-rendu-local) :
+  transcrire une réunion et en rédiger le compte rendu ;
+- rag-local-souverain (ce dépôt).
 
 ## Licence
 

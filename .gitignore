@@ -1,9 +1,16 @@
-# Index généré (contient le contenu des documents) — ne pas publier
+# Index généré : il contient le texte des documents, ne pas le publier
 index.json
+index.tmp
 
-# Documents privés — ne jamais committer de vraies données sensibles
+# Vos documents : jamais versionnés
 docs/*
-!docs/exemple-note-interne.md
+!docs/.gitkeep
 
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+build/
+dist/

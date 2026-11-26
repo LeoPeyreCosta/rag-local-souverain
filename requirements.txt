@@ -1,5 +1,0 @@
-# RAG local souverain — dépendances (déjà présentes sur la machine de test)
-requests>=2.30
-pypdf>=4.0
-# Pas de numpy, pas de framework : recherche vectorielle en Python pur.
-# Le LLM et les embeddings tournent via Ollama (installé séparément).

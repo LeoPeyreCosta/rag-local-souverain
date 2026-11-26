@@ -72,7 +72,7 @@ function afficherSources(passages) {
     nom.textContent = passage.source;
     const score = document.createElement("span");
     score.className = "score";
-    score.textContent = ` — ressemblance ${passage.score.toFixed(2)}`;
+    score.textContent = ` — ressemblance ${passage.score.toFixed(2).replace(".", ",")}`;
     titre.append(nom, score);
     const details = document.createElement("details");
     const resume = document.createElement("summary");

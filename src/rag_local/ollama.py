@@ -24,7 +24,7 @@ class Modeles(Protocol):
 
 @dataclass
 class ClientOllama:
-    url: str = "http://localhost:11434"
+    url: str = "http://127.0.0.1:11434"  # pas localhost : voir config.py
     modele_llm: str = "mistral"
     modele_embeddings: str = "bge-m3"
 

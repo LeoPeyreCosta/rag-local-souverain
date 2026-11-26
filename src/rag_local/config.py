@@ -13,7 +13,10 @@ def _env(nom: str, defaut: str) -> str:
 
 @dataclass
 class Reglages:
-    ollama_url: str = field(default_factory=lambda: _env("OLLAMA_URL", "http://localhost:11434"))
+    #: 127.0.0.1 plutôt que localhost : sous Windows, localhost essaie d'abord
+    #: l'IPv6 (::1), où Ollama n'écoute pas, et chaque connexion perd environ
+    #: 2 secondes avant de se rabattre sur l'IPv4.
+    ollama_url: str = field(default_factory=lambda: _env("OLLAMA_URL", "http://127.0.0.1:11434"))
     modele_llm: str = field(default_factory=lambda: _env("LLM_MODEL", "mistral"))
     #: bge-m3 est multilingue ; nomic-embed-text, entraîné surtout sur de
     #: l'anglais, retrouve moins bien les passages en français (voir le README).

@@ -19,19 +19,32 @@ avec mistral 7B et bge-m3 :
 
 ```text
 Question : Combien de jours de télétravail par semaine pour un temps plein ?
-Réponse  : Deux jours par semaine pour un agent à temps plein.                  (4,6 s)
-Passages : 03-charte-teletravail.md (×3), 04-conges-et-absences.md
+Réponse  : Deux jours par semaine pour un agent à temps plein.          (0,9 s)
+Appui    : « Le télétravail est limité à deux jours par semaine pour un
+           agent à temps complet » (03-charte-teletravail.md)
 
 Question : Quel est le montant de la prime de Noël ?
-Réponse  : Je ne trouve pas cette information dans les documents.               (4,7 s)
+Réponse  : Je ne trouve pas cette information dans les documents.       (0,3 s)
+
+Question : Combien de jours de congé pour le mariage de mon frère ?
+Réponse  : Cinq jours ouvrables.                                        (0,6 s)
+Appui    : « Mariage ou PACS de l'agent : cinq jours ouvrables »
+           (04-conges-et-absences.md)
 ```
 
-Dans la page web, la réponse s'écrit au fil de l'eau, suivie des passages
-consultés (dépliables pour lire le texte exact) ; un refus est affiché comme
-tel. La page liste aussi les documents, permet d'en ajouter et de mettre
-l'index à jour.
+La troisième réponse est fausse : les documents ne prévoient rien pour le
+mariage d'un frère. La vérification ne la signale pas, puisque la phrase
+citée existe bel et bien ; mais elle affiche « de l'agent », et l'erreur se
+voit en une ligne. C'est le rôle de l'appui : rendre la vérification
+rapide, pas la remplacer.
 
-![Page web : la question, la réponse, puis les passages consultés avec leur ressemblance à la question ; à droite, les documents et la mise à jour de l'index](captures/interface.png)
+Dans la page web, la réponse s'écrit au fil de l'eau ; la phrase qui
+l'appuie s'affiche dessous et est surlignée dans son passage, déplié
+automatiquement. Une réponse sans appui retrouvé est signalée « non
+vérifiée », un refus est affiché comme tel. La page liste aussi les
+documents, permet d'en ajouter et de mettre l'index à jour.
+
+![Page web : la question, la réponse, la phrase qui l'appuie, puis les passages consultés, le premier déplié avec cette phrase surlignée ; à droite, les documents et la mise à jour de l'index](captures/interface.png)
 
 ## Fonctionnement
 
@@ -45,11 +58,14 @@ l'index à jour.
         │
         ├─► 4 passages les plus proches dans l'index (index.json, cosinus)
         │
-        └─► consigne + passages + question ──► Ollama (mistral) [GPU local]
+        ├─► consigne + passages + question ──► Ollama (mistral) [GPU local]
+        │
+        └─► « recopie la phrase qui justifie ta réponse » ──► Ollama (mistral)
+              puis le code cherche cette citation dans les 4 passages
                                                      │
-                     réponse en flux NDJSON : passages, texte, fin (refus ?)
+          réponse en flux NDJSON : passages, texte, appui (trouvé ?), fin (refus ?)
 
-  ── Tout le trafic reste sur la machine (localhost:11434 et 127.0.0.1:8000). ──
+  ── Tout le trafic reste sur la machine (127.0.0.1:11434 et 127.0.0.1:8000). ──
 ```
 
 - **Index incrémental.** Chaque document est découpé en passages d'environ
@@ -63,11 +79,25 @@ l'index à jour.
   réponse, la consigne impose une phrase fixe (« Je ne trouve pas cette
   information dans les documents. »), que le code reconnaît, ainsi que ses
   reformulations courantes.
+- **Une phrase des documents à l'appui de chaque réponse.** Une fois la
+  réponse écrite, le modèle doit recopier la phrase des passages qui la
+  justifie. Le code la cherche dans les passages, mot à mot, à quelques
+  différences près (ressemblance d'au moins 0,8, au moins 4 mots) : le
+  modèle recopie rarement à la lettre. Une citation qui assemble des
+  phrases non contiguës d'un même passage est vérifiée phrase par phrase.
+  Retrouvée, c'est **le texte du document** qui est affiché et surligné
+  dans son passage, pas la copie du modèle (une citation où le modèle a
+  écrit « 110 euros » au lieu de « 90 euros » montre bien « 90 euros »).
+  Introuvable, la réponse est signalée comme non vérifiée. La demande est
+  posée à la suite de la réponse, dans le même échange : Ollama réutilise
+  les passages déjà lus (0,01 s de lecture au lieu de 0,2 s mesurées dans
+  un échange séparé). Une citation retrouvée prouve que la phrase existe,
+  pas que la réponse en découle (voir l'évaluation).
 
 ## Souveraineté : les garanties
 
 - **Aucun appel externe.** Le programme ne parle qu'au serveur Ollama
-  (`http://localhost:11434`), et la page ne charge aucune ressource
+  (`http://127.0.0.1:11434`), et la page ne charge aucune ressource
   extérieure (pas de police, de bibliothèque ni de statistique en ligne ;
   un test le vérifie).
 - **Fonctionne hors ligne.** Une fois les modèles téléchargés, l'indexation
@@ -94,59 +124,104 @@ mesure :
   ou au moins parmi les 4 passages donnés au modèle ?
 - **la réponse** : juste, refus à tort (« je ne trouve pas » alors que
   l'information est là), ou fausse ; et pour les questions dont la réponse
-  n'est **pas** dans les documents : refus correct, ou réponse inventée.
+  n'est **pas** dans les documents : refus correct, ou réponse inventée ;
+- **l'appui** : pour une réponse juste, une phrase des passages a-t-elle été
+  retrouvée, et contient-elle la preuve annotée ? Une réponse fausse ou
+  inventée est-elle signalée « non vérifiée » ?
 
-Deux jeux de questions : `developpement/` (40 questions, dont 6 sans
+Trois jeux de questions : `developpement/` (40 questions, dont 6 sans
 réponse) a servi à la mise au point ; `controle/` (21 questions, dont 5 sans
-réponse) a été écrit et versé après le gel du code (commit `ca44386`), puis
-mesuré sans correction ensuite. Chaque mesure a été faite deux fois, modèles
-rechargés : résultats identiques.
+réponse) a été écrit et versé après le gel du code (commit `ca44386`) ;
+`controle-2/` (27 questions, dont 6 sans réponse), sur des faits qu'aucune
+autre question n'interroge, a été versé (commit `036aaf6`) avant d'écrire la
+vérification par citation et avant toute mesure. Les tableaux sont ceux du
+code actuel, modèles rechargés avant chaque jeu.
 
 ### Recherche
 
-Code actuel (passages repartant d'un début de ligne, voir plus bas) :
-
-| Embeddings | Développement : en tête | Développement : parmi les 4 | Contrôle : en tête | Contrôle : parmi les 4 |
-|---|---|---|---|---|
-| nomic-embed-text (version précédente) | 17/34 | 27/34 | 7/16 | 12/16 |
-| **bge-m3 (retenu)** | 30/34 | **34/34** | 14/16 | **16/16** |
+| Embeddings | Développement : en tête / parmi les 4 | Contrôle | Second contrôle |
+|---|---|---|---|
+| nomic-embed-text (version précédente) | 17/34, 27/34 | 7/16, 12/16 | 10/21, 20/21 |
+| **bge-m3 (retenu)** | 30/34, **34/34** | 14/16, **16/16** | 17/21, **21/21** |
 
 La version précédente de ce dépôt utilisait `nomic-embed-text`, entraîné
-surtout sur de l'anglais : pour 7 à 9 questions de développement sur 34
-selon le découpage, le passage utile n'était même pas transmis au modèle.
-`bge-m3`, multilingue, le transmet à chaque fois.
+surtout sur de l'anglais : pour 7 questions de développement sur 34, le
+passage utile n'était même pas transmis au modèle. `bge-m3`, multilingue, le
+transmet à chaque fois.
 
 ### Réponses (mistral 7B)
 
-| Embeddings | Questions avec réponse : justes | Refus à tort | Questions sans réponse : refus correct | Réponses inventées |
+| Embeddings, jeu | Questions avec réponse : justes | Refus à tort | Questions sans réponse : refus correct | Réponses inventées |
 |---|---|---|---|---|
-| nomic-embed-text, développement | 27/34 | 3 | 6/6 | 0 |
+| nomic-embed-text, développement | 27/34 | 4 | 6/6 | 0 |
 | nomic-embed-text, contrôle | 13/16 | 2 | 5/5 | 0 |
+| nomic-embed-text, second contrôle | 20/21 | 0 | 5/6 | 1 |
 | **bge-m3, développement** | **34/34** | 0 | 5/6 | 1 |
 | **bge-m3, contrôle** | **16/16** | 0 | 5/5 | 0 |
+| **bge-m3, second contrôle** | **21/21** | 0 | 4/6 | 2 |
 
-Environ 4,7 secondes par question (recherche et réponse) sur une RTX 3080.
-
-Ce qu'il faut en retenir :
+Environ 0,5 seconde par question (recherche et réponse) sur une RTX 3080,
+plus 0,6 seconde pour la vérification par citation.
 
 - **Avec bge-m3, toutes les réponses présentes dans les documents sont
-  trouvées** (50 sur 50, les deux jeux réunis), contre 40 sur 50 avec
+  trouvées** (71 sur 71, les trois jeux réunis), contre 60 sur 71 avec
   nomic-embed-text, dont les échecs viennent surtout de passages utiles
   jamais transmis au modèle.
-- **Le risque d'extrapolation demeure.** Avec bge-m3, la recherche fournit
-  des passages proches du sujet même quand la réponse n'y est pas, et le
-  modèle peut en tirer une conclusion que les documents ne donnent pas :
-  « Peut-on télétravailler depuis l'étranger ? » → « Non… selon la charte du
-  télétravail », alors que la charte n'en parle pas. Avec l'ancien découpage,
-  trois questions sans réponse sur onze recevaient ainsi une réponse
-  inventée (aussi « La mairie rembourse-t-elle l'abonnement de transport en
-  commun ? » → « Non »), contre une avec le découpage actuel. Sur onze
-  questions et un seul passage par configuration, cet écart ne permet pas
-  de conclure que le découpage réduit le risque.
-- **bge-m3 est gardé par défaut** : manquer 10 réponses sur 50 qui sont dans
-  les documents rend l'outil inutile pour l'agent. Mais une réponse
-  affirmative ou négative doit se vérifier dans les passages affichés sous
-  la réponse ; c'est pour cela qu'ils sont toujours montrés.
+- **Le risque d'extrapolation demeure**, et le second contrôle le montre
+  mieux que les deux premiers jeux : 2 réponses inventées sur 6 questions
+  sans réponse, contre 1 sur 11 auparavant. Ses questions sans réponse
+  frôlent des faits présents : « Combien de jours de congé pour le mariage
+  de mon frère ? » → « Cinq jours ouvrables » (c'est le mariage de l'agent) ;
+  « Puis-je lire mes courriels professionnels sur mon téléphone personnel ?
+  » → « Non… ». La recherche fournit des passages proches du sujet, et un
+  modèle de 7 milliards de paramètres en tire une conclusion que les
+  documents ne donnent pas.
+- **bge-m3 est gardé par défaut** : manquer 11 réponses sur 71 qui sont
+  dans les documents rend l'outil inutile pour l'agent.
+
+### Vérification par citation (bge-m3)
+
+| Jeu | Réponses justes appuyées | dont appui contenant la preuve | Réponses fausses ou inventées signalées |
+|---|---|---|---|
+| Développement | 33/34 | 32/33 | 0/1 |
+| Contrôle | 15/16 | 14/15 | aucune à signaler |
+| Second contrôle | 20/21 | 17/20 | 0/2 |
+
+- **La phrase affichée est presque toujours là** : 68 réponses justes sur
+  71 ont un appui retrouvé, qui contient 63 fois sur 68 la phrase de preuve
+  annotée. Les autres fois, c'est la phrase voisine (pour l'assurance sans
+  ordre de mission signé : « L'usage du véhicule personnel doit être
+  autorisé sur l'ordre de mission ») ou un morceau de la bonne phrase.
+- **Peu de fausses alertes** : 3 réponses justes sur 71 sont signalées
+  « non vérifiées », parce que le modèle a récrit sa citation (« l'agent
+  préviendra » pour « l'agent prévient », « Le maire décide de déclencher »
+  pour « Le plan est déclenché par le maire ») ou l'a composée avec des
+  phrases d'autres documents.
+- **Ce que la vérification ne fait pas : repérer une réponse inventée.**
+  Les 3 réponses inventées citent toutes une phrase réelle (« Mariage ou
+  PACS de l'agent : cinq jours ouvrables »). Une citation retrouvée prouve
+  que la phrase existe, pas que la réponse en découle. L'intérêt est de
+  mettre cette phrase sous les yeux de l'agent : l'écart entre « de
+  l'agent » et « de mon frère » se voit d'un coup d'œil.
+- Avec nomic-embed-text : 58 réponses justes appuyées sur 60, et 1 réponse
+  erronée signalée sur 6.
+
+**Mesure avant correction, puis corrections.** La première mesure du code
+de vérification (commit `5172cad`) donnait 32/34, 15/16 et, sur le second
+contrôle, seule mesure indépendante, 18/21 réponses justes appuyées et 3/6
+refus corrects. Deux défauts sont apparus, corrigés ensuite (commit
+`8b4b152`) :
+
+- le modèle assemble parfois des phrases non contiguës d'un même passage
+  (la première et la troisième ; 3 fois sur les trois jeux) : chaque phrase
+  est maintenant cherchée à part, et le surlignage va de la première à la
+  dernière ;
+- « Le numéro à appeler … n'est pas spécifié dans les documents fournis »
+  n'était pas reconnu comme un refus, et comptait comme une réponse
+  inventée.
+
+Ces corrections ont été faites après avoir vu le second contrôle : les
+chiffres d'après ne sont plus une mesure indépendante.
 
 **Ce qui a changé pendant la mise au point.**
 
@@ -161,9 +236,16 @@ Ce qu'il faut en retenir :
   Il repart maintenant d'un début de ligne quand il y en a un. Mesures avec
   l'ancien découpage (34 passages au lieu de 33) : bge-m3 en tête 31/34 et
   15/16, réponses justes 34/34 et 16/16, refus corrects 5/6 et 3/5 ;
-  nomic-embed-text réponses justes 26/34 et 15/16. Les tableaux ci-dessus
-  sont ceux du code actuel, mesuré une fois sur chaque jeu, modèles
-  rechargés.
+  nomic-embed-text réponses justes 26/34 et 15/16.
+- **Le temps par question est passé de 4,7 s à 0,5 s** en joignant Ollama
+  sur `127.0.0.1` au lieu de `localhost`. Sous Windows, `localhost` essaie
+  d'abord l'IPv6 (`::1`), où Ollama n'écoute pas, et chaque connexion perdait
+  environ 2 secondes ; une question en ouvre deux (vecteur, réponse). Le
+  découvrir a demandé de mesurer le temps passé dans Ollama (0,5 s pour la
+  citation) et de le comparer au temps total (2,9 s).
+- À température 0, les réponses varient encore légèrement d'un passage à
+  l'autre : sur le développement, avec nomic-embed-text, une question passe
+  de « fausse » à « refus à tort » entre deux mesures.
 
 ## Accessibilité
 
@@ -174,7 +256,10 @@ La page vise les règles d'accessibilité attendues d'un service public
   étiquette visible pour chaque champ, navigation complète au clavier et
   focus visible ;
 - la réponse est annoncée aux lecteurs d'écran une fois complète, et non
-  morceau par morceau pendant qu'elle s'écrit ;
+  morceau par morceau pendant qu'elle s'écrit, avec la phrase qui l'appuie
+  ou l'avertissement « réponse non vérifiée » ; le surlignage n'est pas le
+  seul signal (la phrase est aussi recopiée en toutes lettres sous la
+  réponse) ;
 - contrastes d'au moins 4,5:1 pour le texte et 3:1 pour les bordures, en
   thème clair comme en thème sombre (suivi des préférences du système) ;
   animations désactivées si l'utilisateur le demande.
@@ -210,8 +295,9 @@ rag-local demander "Combien de jours de congés pour un mariage ?"
 # Essayer sur le corpus d'exemple
 rag-local serveur --documents corpus/documents
 
-# Mesurer la recherche et les réponses
-rag-local evaluer --questions corpus/controle/questions.jsonl --details
+# Mesurer la recherche, les réponses et leur appui
+rag-local evaluer --questions corpus/controle-2/questions.jsonl --details
+rag-local evaluer --questions corpus/controle-2/questions.jsonl --sans-appui   # sans la citation
 ```
 
 Réglages par variables d'environnement : `LLM_MODEL` (défaut `mistral`),
@@ -243,7 +329,7 @@ simultanés.
 | Découverte | PC existant, sans carte graphique (16 Go de RAM) | — | 0 € | Fonctionne sur le processeur, mais nettement plus lent (non mesuré ici) |
 | Poste individuel | RTX 3060 12 Go | 12 Go | carte ~300–350 € · PC complet ~900–1 200 € *(estimation)* | Modèles 7–8B à l'aise |
 | Poste confortable | RTX 5060 Ti 16 Go | 16 Go | carte ~450–600 € · PC complet ~1 100–1 500 € *(estimation)* | Modèles 7–14B |
-| **Machine de test** | **RTX 3080 10 Go** | 10 Go | — | **Mesuré : environ 4,7 s par question** (mistral 7B, réponses courtes) |
+| **Machine de test** | **RTX 3080 10 Go** | 10 Go | — | **Mesuré : environ 0,5 s par question, plus 0,6 s pour la citation** (mistral 7B, réponses courtes) |
 | Petite équipe | RTX 3090 24 Go d'occasion | 24 Go | carte ~800–1 200 € d'occasion, très variable | Modèles 14–32B, plusieurs utilisateurs (avec un serveur adapté comme vLLM) |
 | Alternative silencieuse | Mac mini M4 Pro 48 Go | 48 Go unifiée | ~2 900–3 200 € | Gros modèles, faible consommation (non testé ici) |
 
@@ -257,10 +343,12 @@ serveur équipé de cartes professionnelles, sur devis.
 
 ## Limites
 
-- **Le modèle peut conclure au-delà des documents** (voir l'évaluation) :
-  une réponse doit se vérifier dans les passages affichés.
-- **Corpus d'évaluation petit et fictif** : 8 documents courts (34
-  passages) et 61 questions, écrits par l'auteur. Sur une vraie base
+- **Le modèle peut conclure au-delà des documents** (3 réponses inventées
+  sur 17 questions sans réponse, voir l'évaluation), et la vérification par
+  citation ne le repère pas : elle montre la phrase sur laquelle la réponse
+  s'appuie, que l'agent doit lire.
+- **Corpus d'évaluation petit et fictif** : 8 documents courts (33
+  passages) et 88 questions, écrits par l'auteur. Sur une vraie base
   documentaire, plus grande et plus redondante, la recherche aura plus de
   passages proches à départager.
 - **Un seul modèle de langue mesuré** (mistral 7B). Un modèle plus gros
@@ -279,10 +367,10 @@ src/rag_local/
   documents.py    lecture des .txt, .md, .pdf et découpage en passages
   ollama.py       embeddings et réponse en flux via Ollama
   index.py        index incrémental, recherche par similarité cosinus
-  reponse.py      consigne, refus reconnu, recherche puis réponse
+  reponse.py      consigne, refus reconnu, recherche, réponse, citation retrouvée
   web.py          API FastAPI
   static/         page HTML, CSS, JavaScript
-  evaluation.py   mesure de la recherche et des réponses
+  evaluation.py   mesure de la recherche, des réponses et de leur appui
   __main__.py     ligne de commande rag-local
 tests/            tests unitaires, API et accessibilité (sans GPU ni Ollama)
 corpus/           documents fictifs, questions annotées, guide
@@ -296,12 +384,14 @@ python -m pip install -e ".[dev]"
 python -m pytest --cov
 ```
 
-52 tests, sans GPU ni réseau : un faux client remplace Ollama. Ils couvrent
-l'index incrémental, la recherche, la reconnaissance du refus, l'API web
+68 tests, sans GPU ni réseau : un faux client remplace Ollama. Ils couvrent
+l'index incrémental, la recherche, la reconnaissance du refus, la
+recherche de la citation (recopie imparfaite, phrases non contiguës,
+citation introuvable ou illisible), l'API web
 (flux de réponse, dépôt de fichiers, noms de fichiers assainis),
 l'accessibilité de la page, la ligne de commande, et le contrat avec Ollama
-(requêtes d'embeddings par lots, lecture du flux de réponse, erreur
-signalée en cours de flux). La CI (Python 3.10 à 3.13) exécute aussi une
+(requêtes d'embeddings par lots, lecture du flux de réponse, réponse
+contrainte par un schéma JSON, erreur signalée en cours de flux). La CI (Python 3.10 à 3.13) exécute aussi une
 analyse statique (pyflakes), une vérification des types (mypy) et exige au
 moins 85 % de couverture (96 % aujourd'hui).
 

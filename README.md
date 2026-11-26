@@ -19,11 +19,11 @@ avec mistral 7B et bge-m3 :
 
 ```text
 Question : Combien de jours de télétravail par semaine pour un temps plein ?
-Réponse  : Deux jours de télétravail par semaine pour un agent à temps plein.   (4,6 s)
-Passages : 03-charte-teletravail.md (×4)
+Réponse  : Deux jours par semaine pour un agent à temps plein.                  (4,6 s)
+Passages : 03-charte-teletravail.md (×3), 04-conges-et-absences.md
 
 Question : Quel est le montant de la prime de Noël ?
-Réponse  : Je ne trouve pas cette information dans les documents.               (4,5 s)
+Réponse  : Je ne trouve pas cette information dans les documents.               (4,7 s)
 ```
 
 Dans la page web, la réponse s'écrit au fil de l'eau, suivie des passages
@@ -104,57 +104,66 @@ rechargés : résultats identiques.
 
 ### Recherche
 
+Code actuel (passages repartant d'un début de ligne, voir plus bas) :
+
 | Embeddings | Développement : en tête | Développement : parmi les 4 | Contrôle : en tête | Contrôle : parmi les 4 |
 |---|---|---|---|---|
-| nomic-embed-text (version précédente) | 14/34 | 25/34 | 9/16 | 14/16 |
-| **bge-m3 (retenu)** | 31/34 | **34/34** | 15/16 | **16/16** |
+| nomic-embed-text (version précédente) | 17/34 | 27/34 | 7/16 | 12/16 |
+| **bge-m3 (retenu)** | 30/34 | **34/34** | 14/16 | **16/16** |
 
 La version précédente de ce dépôt utilisait `nomic-embed-text`, entraîné
-surtout sur de l'anglais : pour 9 questions de développement sur 34, le
-passage utile n'était même pas transmis au modèle. `bge-m3`, multilingue,
-le transmet à chaque fois.
+surtout sur de l'anglais : pour 7 à 9 questions de développement sur 34
+selon le découpage, le passage utile n'était même pas transmis au modèle.
+`bge-m3`, multilingue, le transmet à chaque fois.
 
 ### Réponses (mistral 7B)
 
 | Embeddings | Questions avec réponse : justes | Refus à tort | Questions sans réponse : refus correct | Réponses inventées |
 |---|---|---|---|---|
-| nomic-embed-text, développement | 26/34 | 7 | 5/6 | 1 |
-| nomic-embed-text, contrôle | 15/16 | 1 | 5/5 | 0 |
+| nomic-embed-text, développement | 27/34 | 3 | 6/6 | 0 |
+| nomic-embed-text, contrôle | 13/16 | 2 | 5/5 | 0 |
 | **bge-m3, développement** | **34/34** | 0 | 5/6 | 1 |
-| **bge-m3, contrôle** | **16/16** | 0 | 3/5 | 2 |
+| **bge-m3, contrôle** | **16/16** | 0 | 5/5 | 0 |
 
 Environ 4,7 secondes par question (recherche et réponse) sur une RTX 3080.
 
 Ce qu'il faut en retenir :
 
 - **Avec bge-m3, toutes les réponses présentes dans les documents sont
-  trouvées** (50 sur 50, les deux jeux réunis), contre 41 sur 50 avec
-  nomic-embed-text, dont les échecs sont presque tous des « je ne trouve
-  pas » honnêtes : le modèle n'avait pas reçu le bon passage.
-- **Le revers : quand la réponse est absente, le modèle extrapole plus
-  souvent.** Avec bge-m3, la recherche lui fournit des passages proches du
-  sujet, et il en tire une conclusion que les documents ne donnent pas.
-  Sur 11 questions sans réponse, 3 réponses inventées avec bge-m3, contre
-  1 avec nomic-embed-text. Exemples réels :
-  - « La mairie rembourse-t-elle l'abonnement de transport en commun des
-    agents ? » → « Non, la mairie ne rembourse pas… » (les documents ne
-    traitent que des frais de mission) ;
-  - « Peut-on télétravailler depuis l'étranger ? » → « Non… selon la charte
-    du télétravail » (la charte n'en parle pas).
-- **bge-m3 est gardé par défaut** : manquer 9 réponses sur 50 qui sont dans
+  trouvées** (50 sur 50, les deux jeux réunis), contre 40 sur 50 avec
+  nomic-embed-text, dont les échecs viennent surtout de passages utiles
+  jamais transmis au modèle.
+- **Le risque d'extrapolation demeure.** Avec bge-m3, la recherche fournit
+  des passages proches du sujet même quand la réponse n'y est pas, et le
+  modèle peut en tirer une conclusion que les documents ne donnent pas :
+  « Peut-on télétravailler depuis l'étranger ? » → « Non… selon la charte du
+  télétravail », alors que la charte n'en parle pas. Avec l'ancien découpage,
+  trois questions sans réponse sur onze recevaient ainsi une réponse
+  inventée (aussi « La mairie rembourse-t-elle l'abonnement de transport en
+  commun ? » → « Non »), contre une avec le découpage actuel. Sur onze
+  questions et un seul passage par configuration, cet écart ne permet pas
+  de conclure que le découpage réduit le risque.
+- **bge-m3 est gardé par défaut** : manquer 10 réponses sur 50 qui sont dans
   les documents rend l'outil inutile pour l'agent. Mais une réponse
   affirmative ou négative doit se vérifier dans les passages affichés sous
   la réponse ; c'est pour cela qu'ils sont toujours montrés.
 
-**Ce qui a changé pendant la mise au point.** La détection du refus ne
-reconnaissait d'abord que la phrase imposée ; le modèle dit parfois la même
-chose avec ses mots (« La cantine du personnel n'est pas mentionnée dans les
-extraits »), ce qui était compté à tort comme une réponse inventée. Quelques
-tournures précises sont maintenant reconnues ; un test vérifie qu'une simple
-négation (« les amendes ne sont pas remboursées ») n'est pas prise pour un
-refus. Une réponse du contrôle reste à la limite : « Non, il n'y a pas de
-mention dans les extraits fournis que l'on puisse venir au travail avec son
-chien » commence par une conclusion et est comptée comme inventée.
+**Ce qui a changé pendant la mise au point.**
+
+- La détection du refus ne reconnaissait d'abord que la phrase imposée ; le
+  modèle dit parfois la même chose avec ses mots (« La cantine du personnel
+  n'est pas mentionnée dans les extraits »), ce qui était compté à tort comme
+  une réponse inventée. Quelques tournures précises sont maintenant
+  reconnues ; un test vérifie qu'une simple négation (« les amendes ne sont
+  pas remboursées ») n'est pas prise pour un refus.
+- Le recouvrement entre deux passages voisins repartait du premier mot
+  venu : un passage pouvait commencer par « jours », fin d'un titre coupé.
+  Il repart maintenant d'un début de ligne quand il y en a un. Mesures avec
+  l'ancien découpage (34 passages au lieu de 33) : bge-m3 en tête 31/34 et
+  15/16, réponses justes 34/34 et 16/16, refus corrects 5/6 et 3/5 ;
+  nomic-embed-text réponses justes 26/34 et 15/16. Les tableaux ci-dessus
+  sont ceux du code actuel, mesuré une fois sur chaque jeu, modèles
+  rechargés.
 
 ## Accessibilité
 
@@ -287,7 +296,7 @@ python -m pip install -e ".[dev]"
 python -m pytest --cov
 ```
 
-51 tests, sans GPU ni réseau : un faux client remplace Ollama. Ils couvrent
+52 tests, sans GPU ni réseau : un faux client remplace Ollama. Ils couvrent
 l'index incrémental, la recherche, la reconnaissance du refus, l'API web
 (flux de réponse, dépôt de fichiers, noms de fichiers assainis),
 l'accessibilité de la page, la ligne de commande, et le contrat avec Ollama

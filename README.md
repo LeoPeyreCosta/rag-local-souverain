@@ -31,6 +31,8 @@ consultés (dépliables pour lire le texte exact) ; un refus est affiché comme
 tel. La page liste aussi les documents, permet d'en ajouter et de mettre
 l'index à jour.
 
+![Page web : la question, la réponse, puis les passages consultés avec leur ressemblance à la question ; à droite, les documents et la mise à jour de l'index](captures/interface.png)
+
 ## Fonctionnement
 
 ```text

@@ -20,8 +20,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Installation
-        run: python -m pip install -e ".[dev]" pyflakes
+        run: python -m pip install -e ".[dev]"
       - name: Analyse statique
         run: python -m pyflakes src tests
-      - name: Tests unitaires et validité des corpus (sans GPU ni modèle)
-        run: python -m pytest -q
+      - name: Typage
+        run: python -m mypy src
+      - name: Tests et couverture (sans GPU ni Ollama)
+        run: python -m pytest -q --cov --cov-report=term --cov-fail-under=85

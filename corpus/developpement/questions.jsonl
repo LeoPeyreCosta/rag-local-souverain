@@ -1,0 +1,40 @@
+{"id": "dev-01", "question": "Où dois-je aller le premier jour pour signer mon procès-verbal d'installation ?", "source": "01-accueil-nouveaux-agents.md", "preuve": "bureau 104", "mots_cles": [["104"]]}
+{"id": "dev-02", "question": "Combien coûte le remplacement d'un badge perdu ?", "source": "01-accueil-nouveaux-agents.md", "preuve": "le remplacement coûte 15 euros", "mots_cles": [["15"]]}
+{"id": "dev-03", "question": "Quel jour du mois le salaire est-il versé ?", "source": "01-accueil-nouveaux-agents.md", "preuve": "La paie est versée le 27 de chaque mois", "mots_cles": [["27"]]}
+{"id": "dev-04", "question": "Combien la mairie verse-t-elle pour ma mutuelle santé ?", "source": "01-accueil-nouveaux-agents.md", "preuve": "à hauteur de 25 euros par mois", "mots_cles": [["25"]]}
+{"id": "dev-05", "question": "Comment s'appelle l'intranet de la commune ?", "source": "01-accueil-nouveaux-agents.md", "preuve": "appelé « Le Lien »", "mots_cles": [["lien"]]}
+{"id": "dev-06", "question": "Combien de temps à l'avance l'ordre de mission doit-il être signé ?", "source": "02-frais-de-deplacement.md", "preuve": "cinq jours ouvrés avant le départ", "mots_cles": [["cinq", "5"]]}
+{"id": "dev-07", "question": "Quel est le plafond de remboursement d'une nuit d'hôtel à Paris ?", "source": "02-frais-de-deplacement.md", "preuve": "110 euros à Paris", "mots_cles": [["110"]]}
+{"id": "dev-08", "question": "Jusqu'à quand puis-je demander le remboursement de mes frais après une mission ?", "source": "02-frais-de-deplacement.md", "preuve": "deux mois après la mission", "mots_cles": [["deux mois", "2 mois"]]}
+{"id": "dev-09", "question": "Combien est remboursé un repas pris pendant une mission ?", "source": "02-frais-de-deplacement.md", "preuve": "forfait de 20 euros", "mots_cles": [["20"]]}
+{"id": "dev-10", "question": "Une amende pour excès de vitesse pendant une mission est-elle remboursée ?", "source": "02-frais-de-deplacement.md", "preuve": "restent à la charge de l'agent", "mots_cles": [["charge", "pas", "non"]]}
+{"id": "dev-11", "question": "Combien de jours de télétravail par semaine pour un agent à temps plein ?", "source": "03-charte-teletravail.md", "preuve": "deux jours par semaine", "mots_cles": [["deux", "2"]]}
+{"id": "dev-12", "question": "Quel jour de la semaine faut-il obligatoirement venir au bureau ?", "source": "03-charte-teletravail.md", "preuve": "Le mardi est un jour de présence obligatoire", "mots_cles": [["mardi"]]}
+{"id": "dev-13", "question": "Quelle ancienneté faut-il pour demander le télétravail ?", "source": "03-charte-teletravail.md", "preuve": "six mois d'ancienneté", "mots_cles": [["six", "6"]]}
+{"id": "dev-14", "question": "Combien touche-t-on par jour télétravaillé ?", "source": "03-charte-teletravail.md", "preuve": "2,50 euros par jour", "mots_cles": [["2,50", "2,5"]]}
+{"id": "dev-15", "question": "Les policiers municipaux ont-ils droit au télétravail ?", "source": "03-charte-teletravail.md", "preuve": "police municipale n'y sont pas éligibles", "mots_cles": [["pas", "non"]]}
+{"id": "dev-16", "question": "Combien de jours de congés annuels pour un agent à temps complet ?", "source": "04-conges-et-absences.md", "preuve": "25 jours de congés annuels", "mots_cles": [["25"]]}
+{"id": "dev-17", "question": "Dans quel délai faut-il envoyer son arrêt de travail aux ressources humaines ?", "source": "04-conges-et-absences.md", "preuve": "dans un délai de 48 heures", "mots_cles": [["48"]]}
+{"id": "dev-18", "question": "Jusqu'à quelle date peut-on reporter des congés non pris ?", "source": "04-conges-et-absences.md", "preuve": "jusqu'au 30 avril", "mots_cles": [["30 avril"]]}
+{"id": "dev-19", "question": "Combien de jours d'absence peut-on prendre pour garder un enfant malade ?", "source": "04-conges-et-absences.md", "preuve": "six jours par an pour un agent à temps complet", "mots_cles": [["six", "6"]]}
+{"id": "dev-20", "question": "Combien de jours d'absence pour mon mariage ?", "source": "04-conges-et-absences.md", "preuve": "cinq jours ouvrables", "mots_cles": [["cinq", "5"]]}
+{"id": "dev-21", "question": "Quelle doit être la longueur minimale d'un mot de passe ?", "source": "05-securite-informatique.md", "preuve": "au moins quatorze caractères", "mots_cles": [["quatorze", "14"]]}
+{"id": "dev-22", "question": "J'ai cliqué sur un lien dans un mail frauduleux, que dois-je faire ?", "source": "05-securite-informatique.md", "preuve": "appelle immédiatement le poste 2300", "mots_cles": [["2300"]]}
+{"id": "dev-23", "question": "Puis-je brancher ma clé USB personnelle sur mon ordinateur de travail ?", "source": "05-securite-informatique.md", "preuve": "Les clés USB personnelles sont interdites", "mots_cles": [["interdit", "pas", "non"]]}
+{"id": "dev-24", "question": "Quel soir faut-il laisser son ordinateur allumé pour les mises à jour ?", "source": "05-securite-informatique.md", "preuve": "installées chaque jeudi soir", "mots_cles": [["jeudi"]]}
+{"id": "dev-25", "question": "Quels sont les horaires de l'accueil de la mairie le samedi ?", "source": "06-accueil-du-public.md", "preuve": "le samedi de 9 h à 12 h", "mots_cles": [["9"], ["12"]]}
+{"id": "dev-26", "question": "Sous quel délai doit-on répondre au courrier d'un usager ?", "source": "06-accueil-du-public.md", "preuve": "une réponse sous un mois", "mots_cles": [["un mois", "1 mois"]]}
+{"id": "dev-27", "question": "Que dois-je faire après une agression verbale au guichet ?", "source": "06-accueil-du-public.md", "preuve": "fiche de signalement sur l'intranet dans les 24 heures", "mots_cles": [["signalement", "fiche"]]}
+{"id": "dev-28", "question": "Quel poste appeler pour joindre le CCAS le jour même ?", "source": "06-accueil-du-public.md", "preuve": "poste 2510", "mots_cles": [["2510"]]}
+{"id": "dev-29", "question": "Combien de temps garde-t-on les images de vidéosurveillance ?", "source": "07-protection-des-donnees.md", "preuve": "effacés au bout de trente jours", "mots_cles": [["trente", "30"]]}
+{"id": "dev-30", "question": "Quand le délégué à la protection des données tient-il sa permanence ?", "source": "07-protection-des-donnees.md", "preuve": "permanence le jeudi matin", "mots_cles": [["jeudi"]]}
+{"id": "dev-31", "question": "En combien de temps faut-il déclarer une fuite de données à la CNIL ?", "source": "07-protection-des-donnees.md", "preuve": "72 heures pour la notifier", "mots_cles": [["72"]]}
+{"id": "dev-32", "question": "À partir de quel âge peut-on s'inscrire sur le registre du plan canicule ?", "source": "08-plan-canicule.md", "preuve": "plus de 65 ans", "mots_cles": [["65"]]}
+{"id": "dev-33", "question": "Que se passe-t-il si une personne inscrite ne décroche pas pendant une canicule ?", "source": "08-plan-canicule.md", "preuve": "ne répond pas à deux appels successifs", "mots_cles": [["domicile", "visite", "rend", "pompiers"]]}
+{"id": "dev-34", "question": "Quelle salle sert de lieu rafraîchi pendant une canicule ?", "source": "08-plan-canicule.md", "preuve": "la salle Jean-Moulin est ouverte", "mots_cles": [["jean"]]}
+{"id": "dev-35", "question": "Quel est le montant de la prime de fin d'année ?", "source": null, "preuve": null, "mots_cles": null}
+{"id": "dev-36", "question": "Combien de places de parking sont réservées aux agents ?", "source": null, "preuve": null, "mots_cles": null}
+{"id": "dev-37", "question": "Qui est le maire de la commune ?", "source": null, "preuve": null, "mots_cles": null}
+{"id": "dev-38", "question": "Peut-on télétravailler depuis l'étranger ?", "source": null, "preuve": null, "mots_cles": null}
+{"id": "dev-39", "question": "Quel est le numéro de téléphone de la médecine du travail ?", "source": null, "preuve": null, "mots_cles": null}
+{"id": "dev-40", "question": "La cantine du personnel est-elle ouverte le vendredi ?", "source": null, "preuve": null, "mots_cles": null}

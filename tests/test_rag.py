@@ -86,6 +86,7 @@ def test_refus_reconnu():
     # Le modèle reformule parfois la phrase imposée :
     assert est_un_refus("La cantine du personnel n'est pas mentionnée dans les extraits fournis.")
     assert est_un_refus("Les informations fournies ne précisent pas quel jour.")
+    assert est_un_refus("Le numéro à appeler n'est pas spécifié dans les documents fournis.")
     assert not est_un_refus("Vous avez droit à 25 jours.")
     assert not est_un_refus("Les amendes ne sont pas remboursées.")  # une négation n'est pas un refus
 
@@ -129,6 +130,24 @@ def test_citation_precedee_du_numero_et_de_la_source():
     appui = localiser("[1] (source : conges.md) Un agent a droit à 25 jours de congés annuels.", PASSAGES)
     assert appui and appui.rang == 1
     assert PASSAGES[0].texte[appui.debut :].startswith("Un agent")
+
+
+def test_citation_qui_assemble_des_phrases_non_contigues():
+    passage = Passage(
+        "securite.md",
+        "Un mot de passe compte au moins quatorze caractères. Il est personnel et ne doit "
+        "pas être écrit. Il est changé une fois par an, et immédiatement en cas de doute.",
+        [1.0],
+    )
+    citation = "Un mot de passe compte au moins quatorze caractères. Il est changé une fois par an."
+    appui = localiser(citation, [PASSAGES[0], passage])
+    assert appui and appui.rang == 2
+    assert passage.texte[appui.debut : appui.fin].startswith("Un mot de passe")
+    assert passage.texte[appui.debut : appui.fin].endswith("une fois par an")
+    # Une phrase introuvable, ou des phrases venues de deux passages : rien.
+    assert localiser("Un mot de passe compte au moins quatorze caractères. Les chiens sont admis le vendredi.", [passage]) is None
+    assert localiser("Un mot de passe compte au moins quatorze caractères. Un agent a droit à 25 jours.",
+                     [PASSAGES[0], passage]) is None
 
 
 def test_citation_introuvable_trop_courte_ou_vide():

@@ -46,8 +46,8 @@ def normaliser(texte: str) -> str:
 #: même chose avec ses mots (« n'est pas mentionnée dans les extraits »).
 _REFUS = re.compile(
     r"je ne trouve pas cette information"
-    r"|\bn(?:e)? (?:sont|est) pas (?:mentionne|indique|precise|present)"
-    r"|\bne (?:precise|mentionne|indique|contien|evoque)\w* pas"
+    r"|\bn(?:e)? (?:sont|est) pas (?:mentionne|indique|precise|specifie|present)"
+    r"|\bne (?:precise|specifie|mentionne|indique|contien|evoque)\w* pas"
     r"|\baucune information\b|\bpas d information\b"
 )
 
@@ -129,13 +129,45 @@ def _mots(texte: str) -> list[tuple[str, int, int]]:
     return mots
 
 
-def localiser(citation: str, passages: list[Passage]) -> Appui | None:
-    """Le morceau de passage le plus proche de la citation, s'il l'est assez.
+#: Fin de phrase dans une citation.
+_FIN_DE_PHRASE = re.compile(r"(?<=[.!?;])\s+")
 
-    On compare la citation, mot à mot, à chaque fenêtre de longueur voisine
-    de chaque passage : quelques milliers de comparaisons pour 4 passages
-    de 500 caractères."""
-    cible = normaliser(_EN_TETE.sub("", citation, count=1)).split()
+
+def localiser(citation: str, passages: list[Passage]) -> Appui | None:
+    """Le morceau de passage qui correspond à la citation, ou None.
+
+    La citation est d'abord cherchée d'un seul tenant. Le modèle assemble
+    parfois des phrases non contiguës d'un même passage (la première et la
+    troisième) : chaque phrase est alors cherchée à part, et si toutes se
+    retrouvent dans le même passage, on retient le morceau qui va de la
+    première à la dernière."""
+    citation = _EN_TETE.sub("", citation, count=1)
+    entiere = _chercher(normaliser(citation).split(), passages)
+    if entiere:
+        return entiere
+    phrases = [normaliser(p).split() for p in _FIN_DE_PHRASE.split(citation)]
+    phrases = [p for p in phrases if len(p) >= MOTS_MIN_APPUI]
+    if len(phrases) < 2:
+        return None
+    trouvees = [_chercher(p, passages) for p in phrases]
+    if any(t is None for t in trouvees):
+        return None
+    morceaux = [t for t in trouvees if t]
+    if len({t.rang for t in morceaux}) > 1:
+        return None
+    return Appui(
+        morceaux[0].rang,
+        min(t.debut for t in morceaux),
+        max(t.fin for t in morceaux),
+        min(t.ressemblance for t in morceaux),
+    )
+
+
+def _chercher(cible: list[str], passages: list[Passage]) -> Appui | None:
+    """La fenêtre de passage la plus proche de la suite de mots, si elle l'est
+    assez. On compare la citation à chaque fenêtre de longueur voisine de
+    chaque passage : quelques milliers de comparaisons pour 4 passages de
+    500 caractères, quelques millisecondes."""
     n = len(cible)
     if n < MOTS_MIN_APPUI:
         return None

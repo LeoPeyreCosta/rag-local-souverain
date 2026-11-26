@@ -8,7 +8,7 @@ Cas d'usage : un service (santé, administration, cabinet, PME) veut poser des q
 
 ## Ce que ça fait
 
-On dépose des documents dans `docs/` (`.txt`, `.md`, `.pdf`). Le programme les découpe, les transforme en vecteurs (*embeddings*) **en local**, et les range dans un index. Quand on pose une question, il retrouve les passages les plus pertinents et les donne à un LLM **local** qui rédige la réponse en citant ses sources.
+On dépose des documents dans `docs/` (`.txt`, `.md`, `.pdf`). Le programme les découpe, les transforme en vecteurs (*embeddings*) **en local**, et les range dans un index. Quand on pose une question, il retrouve les passages les plus pertinents et les donne à un LLM **local** qui rédige la réponse ; le programme affiche ensuite les passages consultés, du plus au moins pertinent.
 
 ```
   Documents privés (docs/)
@@ -29,7 +29,7 @@ On dépose des documents dans `docs/` (`.txt`, `.md`, `.pdf`). Le programme les 
   Passages pertinents  ──►  LLM  ──►  Ollama (mistral)  [GPU local]
         │
         ▼
-  Réponse + sources citées
+  Réponse + passages consultés
 
   ── Tout le trafic reste sur localhost:11434. Rien ne sort. ──
 ```
@@ -78,6 +78,35 @@ python rag_local.py ingest
 python rag_local.py ask "Quelle est la procédure en cas de rupture de stock ?"
 ```
 
+## Exemple réel (RTX 3080, mistral 7B)
+
+Sur le document d'exemple `docs/exemple-note-interne.md` (3 passages indexés) :
+
+```
+> python rag_local.py ask "Que faire en cas de rupture de stock ?"
+
+En cas de rupture de stock, le responsable de rayon passe une commande d'urgence
+au fournisseur référencé, signale l'indisponibilité par une étiquette
+« temporairement indisponible », et note la rupture dans le cahier de suivi.
+
+— Passages consultés (du plus au moins pertinent) —
+  [1] exemple-note-interne.md : # Note interne — Procédures du rayon vrac …
+  ...
+```
+
+Question dont la réponse **n'est pas** dans les documents :
+
+```
+> python rag_local.py ask "Quel est le salaire du responsable de rayon ?"
+
+Dans le contexte fourni, aucun élément ne permet de déterminer le salaire
+du responsable de rayon.
+```
+
+Le modèle reconnaît l'absence d'information au lieu d'inventer une réponse.
+
+**Temps mesurés :** ~50 s pour la toute première question (chargement du modèle en mémoire GPU), puis **~13 s par question**.
+
 ### Réglages (variables d'environnement)
 - `LLM_MODEL` — ex. `qwen2.5:7b`, `llama3.1:8b` (défaut : `mistral`)
 - `EMBED_MODEL` — défaut : `nomic-embed-text`
@@ -87,6 +116,7 @@ python rag_local.py ask "Quelle est la procédure en cas de rupture de stock ?"
 
 - Démonstrateur, pas un produit : pas d'interface web, pas de gestion des droits, index reconstruit à chaque fois.
 - La qualité des réponses dépend du modèle local et du découpage.
+- **Constaté pendant les tests :** un modèle de 7B numérote mal ses références (il citait des passages inexistants, ou le mauvais). Les sources sont donc listées par le programme, à partir du classement de la recherche, qui lui est exact, et non par le modèle.
 - Pour un vrai déploiement : base vectorielle dédiée (Chroma/Qdrant), modèle plus gros si le GPU le permet, et une évaluation des réponses.
 
 ## Pistes d'évolution

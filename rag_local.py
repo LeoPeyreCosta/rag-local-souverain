@@ -32,8 +32,8 @@ HERE         = os.path.dirname(os.path.abspath(__file__))
 DOCS_DIR     = os.path.join(HERE, "docs")
 INDEX_PATH   = os.path.join(HERE, "index.json")
 TOP_K        = 4        # nb de passages donnés au LLM
-CHUNK_SIZE   = 1000     # taille d'un passage (caractères)
-CHUNK_OVER   = 150      # chevauchement entre passages
+CHUNK_SIZE   = 500      # taille d'un passage (caractères)
+CHUNK_OVER   = 80       # chevauchement entre passages
 
 
 # ------------------------------------------------------------------ lecture docs
@@ -81,6 +81,9 @@ def decouper(texte, size=CHUNK_SIZE, overlap=CHUNK_OVER):
         if coupe >= n:
             break
         i = max(coupe - overlap, i + 1)
+        espace = texte.find(" ", i)          # démarrer sur un début de mot
+        if espace != -1 and espace < coupe:
+            i = espace + 1
     return morceaux
 
 
@@ -172,17 +175,20 @@ def cmd_ask(question):
 
     contexte = "\n\n".join(f"[{i+1}] (source : {c['source']})\n{c['texte']}"
                            for i, c in enumerate(retenus))
-    systeme = ("Tu réponds uniquement à partir du CONTEXTE fourni, en français. "
-               "Si l'information n'y est pas, dis-le clairement. "
-               "Cite les numéros de passage [n] utilisés.")
+    # Les sources sont affichées par le programme (fiable), pas citées par le
+    # modèle : un petit LLM (7B) numérote souvent mal ses références.
+    systeme = ("Tu réponds uniquement à partir du CONTEXTE fourni, en français, "
+               "de façon concise. Si l'information n'y est pas, dis-le clairement. "
+               "N'ajoute aucun numéro de référence.")
     user = f"CONTEXTE :\n{contexte}\n\nQUESTION : {question}"
     reponse = chat([{"role": "system", "content": systeme},
                     {"role": "user", "content": user}])
 
     print("\n" + reponse + "\n")
-    print("— Sources utilisées —")
+    print("— Passages consultés (du plus au moins pertinent) —")
     for i, c in enumerate(retenus):
-        print(f"  [{i+1}] {c['source']}")
+        extrait = c["texte"].replace("\n", " ")[:70]
+        print(f"  [{i+1}] {c['source']} : {extrait}…")
 
 
 # --------------------------------------------------------------------------- main

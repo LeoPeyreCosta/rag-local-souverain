@@ -1,12 +1,13 @@
 import json
+from pathlib import Path
 
 import pytest
 from conftest import ModelesFactices, question_posee
 
 from rag_local.documents import decouper, lire_documents
-from rag_local.evaluation import correspond, mesurer_recherche, mesurer_reponses
+from rag_local.evaluation import correspond, lire_questions, mesurer_recherche, mesurer_reponses
 from rag_local.index import Index
-from rag_local.reponse import REFUS, est_un_refus, messages, rechercher, repondre
+from rag_local.reponse import REFUS, est_un_refus, messages, normaliser, rechercher, repondre
 
 
 # -------------------------------------------------------------- documents
@@ -133,3 +134,21 @@ def test_preuve_absente_de_l_index(documents, modeles):
     index, _ = Index.construire(lire_documents(documents), modeles)
     with pytest.raises(ValueError, match="preuve introuvable"):
         mesurer_recherche([{"id": "x", "question": "congés", "preuve": "n'existe pas", "mots_cles": []}], index, modeles)
+
+
+# ----------------------------------------------------------------- corpus
+CORPUS = Path(__file__).resolve().parents[1] / "corpus"
+
+
+@pytest.mark.parametrize("fichier", sorted(CORPUS.glob("*/questions.jsonl")), ids=lambda p: p.parent.name)
+def test_corpus_bien_forme(fichier):
+    """Chaque preuve figure dans son document, et tient dans un passage."""
+    questions = lire_questions(fichier)
+    assert len({q["id"] for q in questions}) == len(questions)
+    for q in questions:
+        if q["preuve"] is None:
+            assert q["source"] is None and q["mots_cles"] is None
+            continue
+        texte = (CORPUS / "documents" / q["source"]).read_text(encoding="utf-8")
+        assert any(normaliser(q["preuve"]) in normaliser(p) for p in decouper(texte)), q["id"]
+        assert q["mots_cles"] and all(q["mots_cles"])

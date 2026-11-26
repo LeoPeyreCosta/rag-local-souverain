@@ -1,0 +1,21 @@
+{"id": "ctl-01", "question": "À quelle heure suis-je attendu le premier jour ?", "source": "01-accueil-nouveaux-agents.md", "preuve": "accueilli à 8 h 30", "mots_cles": [["8 h 30", "8h30", "8 heures 30"]]}
+{"id": "ctl-02", "question": "Combien la commune verse-t-elle pour la prévoyance ?", "source": "01-accueil-nouveaux-agents.md", "preuve": "La participation à la prévoyance est de 12 euros", "mots_cles": [["12"]]}
+{"id": "ctl-03", "question": "Combien de temps dure la période d'essai pour un contrat de trois mois ?", "source": "01-accueil-nouveaux-agents.md", "preuve": "trois semaines pour un contrat de moins de six mois", "mots_cles": [["trois semaines", "3 semaines"]]}
+{"id": "ctl-04", "question": "Les frais de péage sont-ils pris en charge ?", "source": "02-frais-de-deplacement.md", "preuve": "Les frais de parking et de péage sont remboursés", "mots_cles": [["oui", "rembours", "pris en charge"]]}
+{"id": "ctl-05", "question": "Quel moyen de transport faut-il privilégier pour une mission ?", "source": "02-frais-de-deplacement.md", "preuve": "Le train en seconde classe est le moyen de transport de référence", "mots_cles": [["train"]]}
+{"id": "ctl-06", "question": "Quel est le maximum annuel de l'indemnité de télétravail ?", "source": "03-charte-teletravail.md", "preuve": "dans la limite de 220 euros par an", "mots_cles": [["220"]]}
+{"id": "ctl-07", "question": "Puis-je imprimer chez moi des documents contenant des données personnelles quand je télétravaille ?", "source": "03-charte-teletravail.md", "preuve": "ne doivent jamais être imprimés au domicile", "mots_cles": [["non", "pas", "jamais", "interdit"]]}
+{"id": "ctl-08", "question": "Combien de jours d'absence a-t-on pour un déménagement ?", "source": "04-conges-et-absences.md", "preuve": "Déménagement : un jour par an", "mots_cles": [["un jour", "1 jour"]]}
+{"id": "ctl-09", "question": "Avant quelle date les congés d'été sont-ils arrêtés ?", "source": "04-conges-et-absences.md", "preuve": "avant le 31 mars", "mots_cles": [["31 mars"]]}
+{"id": "ctl-10", "question": "On m'a volé mon ordinateur portable de service, que dois-je faire ?", "source": "05-securite-informatique.md", "preuve": "est déclaré à la DSI dans l'heure", "mots_cles": [["dsi", "systemes d information"]]}
+{"id": "ctl-11", "question": "Au bout de combien de minutes le poste se verrouille-t-il tout seul ?", "source": "05-securite-informatique.md", "preuve": "après dix minutes d'inactivité", "mots_cles": [["dix", "10"]]}
+{"id": "ctl-12", "question": "Que faire si un usager tient des propos suicidaires au guichet ?", "source": "06-accueil-du-public.md", "preuve": "appelle le 15 ou le 17", "mots_cles": [["15", "17", "responsable"]]}
+{"id": "ctl-13", "question": "Où trouver une boucle magnétique pour une personne malentendante ?", "source": "06-accueil-du-public.md", "preuve": "disponible au guichet 3", "mots_cles": [["guichet"], ["3", "trois"]]}
+{"id": "ctl-14", "question": "Combien de temps garde-t-on une candidature non retenue ?", "source": "07-protection-des-donnees.md", "preuve": "sont conservées deux ans", "mots_cles": [["deux ans", "2 ans"]]}
+{"id": "ctl-15", "question": "Que doit faire le CCAS une fois l'alerte canicule terminée ?", "source": "08-plan-canicule.md", "preuve": "rédige un bilan dans les quinze jours", "mots_cles": [["bilan"]]}
+{"id": "ctl-16", "question": "Jusqu'à quelle heure l'accueil de jour reste-t-il ouvert pendant un grand froid ?", "source": "08-plan-canicule.md", "preuve": "prolongé jusqu'à 21 h", "mots_cles": [["21"]]}
+{"id": "ctl-17", "question": "Combien de jours de télétravail pour un apprenti ?", "source": null, "preuve": null, "mots_cles": null}
+{"id": "ctl-18", "question": "Quel est le code du wifi pour les invités ?", "source": null, "preuve": null, "mots_cles": null}
+{"id": "ctl-19", "question": "La mairie rembourse-t-elle l'abonnement de transport en commun des agents ?", "source": null, "preuve": null, "mots_cles": null}
+{"id": "ctl-20", "question": "Quand aura lieu la prochaine élection du comité social territorial ?", "source": null, "preuve": null, "mots_cles": null}
+{"id": "ctl-21", "question": "Peut-on venir au travail avec son chien ?", "source": null, "preuve": null, "mots_cles": null}

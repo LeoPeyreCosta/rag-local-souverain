@@ -129,10 +129,10 @@ def _evaluer(args: argparse.Namespace) -> None:
             if mesure.rates:
                 print(f"\nRecherche ({mesure.modele}), passage absent des {reglages.nb_passages} premiers :")
                 print("\n".join(f"  - {r}" for r in mesure.rates))
-        for mesure in reponses:
-            if mesure.erreurs:
-                print(f"\nRéponses ({mesure.modele}) :")
-                print("\n".join(f"  - {e}" for e in mesure.erreurs))
+        for mesure_reponses in reponses:
+            if mesure_reponses.erreurs:
+                print(f"\nRéponses ({mesure_reponses.modele}) :")
+                print("\n".join(f"  - {e}" for e in mesure_reponses.erreurs))
 
 
 def main(argv: list[str] | None = None) -> None:

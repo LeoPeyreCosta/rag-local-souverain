@@ -18,3 +18,7 @@ dist/
 # Mesure de couverture
 .coverage
 htmlcov/
+
+# Sorties de outils/audit_accessibilite.py
+rapport-accessibilite/
+node_modules/

@@ -12,6 +12,26 @@ retrouve les passages utiles (RAG : *retrieval-augmented generation*) et les
 donne à un modèle local, qui rédige la réponse en s'appuyant sur eux
 seulement.
 
+**En bref**
+
+- **Mesuré** sur 88 questions d'agents et 8 documents fictifs (40 questions
+  de mise au point, 48 de contrôle versées avant toute mesure) : le passage
+  qui contient la réponse est fourni au modèle pour 71 questions sur 71, et
+  les 71 réponses sont justes ; sur 17 questions sans réponse dans les
+  documents, 14 refus corrects et 3 réponses inventées. La phrase qui appuie
+  la réponse est retrouvée dans les documents pour 68 réponses sur 71.
+  Environ 1 seconde par question sur une RTX 3080, vérification comprise.
+- **Lancer** : `pip install -e .`, `ollama pull mistral`, `ollama pull
+  bge-m3`, puis `rag-local serveur --documents corpus/documents`, ouvrir
+  http://127.0.0.1:8000 et cliquer « Mettre à jour l'index »
+  ([Installation](#installation)).
+- **Limites** : corpus petit et fictif, écrit par l'auteur ; le modèle peut
+  conclure au-delà des documents, et la vérification ne le repère pas
+  ([Limites](#limites)).
+- **Accessibilité** : page vérifiée au clavier, dans l'arbre
+  d'accessibilité et critère RGAA par critère ; ni audit ni essai au lecteur
+  d'écran pour l'instant ([ACCESSIBILITE.md](ACCESSIBILITE.md)).
+
 ## Exemple (réponses réelles)
 
 Sur le corpus d'évaluation (huit documents internes d'une commune fictive),
@@ -253,8 +273,10 @@ La page vise les règles d'accessibilité attendues d'un service public
 (RGAA) :
 
 - lien d'évitement vers la question, structure de titres sans saut,
-  étiquette visible pour chaque champ, navigation complète au clavier et
+  étiquette visible pour chaque champ, utilisation complète au clavier et
   focus visible ;
+- erreurs de saisie écrites sous le champ concerné et reliées à lui ; une
+  panne du serveur s'affiche à la place de la réponse ;
 - la réponse est annoncée aux lecteurs d'écran une fois complète, et non
   morceau par morceau pendant qu'elle s'écrit, avec la phrase qui l'appuie
   ou l'avertissement « réponse non vérifiée » ; le surlignage n'est pas le
@@ -262,12 +284,23 @@ La page vise les règles d'accessibilité attendues d'un service public
   réponse) ;
 - contrastes d'au moins 4,5:1 pour le texte et 3:1 pour les bordures, en
   thème clair comme en thème sombre (suivi des préférences du système) ;
-  animations désactivées si l'utilisateur le demande.
+  lecture possible sur 320 px de large.
 
-Ces points sont contrôlés automatiquement
-([`tests/test_accessibilite.py`](tests/test_accessibilite.py)). Ces contrôles
-ne remplacent pas un audit : la page n'a pas été testée avec un lecteur
-d'écran.
+Deux niveaux de vérification : des tests unitaires, lancés à chaque envoi
+([`tests/test_accessibilite.py`](tests/test_accessibilite.py) : structure,
+étiquettes, références ARIA, contrastes calculés), et un script qui pilote
+la page dans Edge
+([`outils/audit_accessibilite.py`](outils/audit_accessibilite.py) : axe-core,
+parcours au clavier, cas d'erreur, 320 px, espacement du texte). Le script
+réussit ses 17 vérifications. Sur la version précédente de la page, il n'en
+réussissait que 9, alors qu'axe-core n'y relevait aucune violation : les
+défauts étaient dans les parcours (erreurs, panne, noms de boutons
+identiques), et ils sont corrigés.
+
+Le détail, critère RGAA par critère, et ce qui reste à faire (essai avec un
+lecteur d'écran, contraste élevé de Windows, validateur du W3C) sont dans
+[ACCESSIBILITE.md](ACCESSIBILITE.md). Ce n'est pas un audit : il n'y a pas
+de déclaration de conformité.
 
 ## Installation
 
@@ -357,7 +390,8 @@ serveur équipé de cartes professionnelles, sur devis.
   un poste, pas un service partagé.
 - **PDF** : seul le texte numérique est lu ; un document scanné doit d'abord
   passer par une reconnaissance de caractères.
-- **Accessibilité** contrôlée automatiquement, pas auditée (voir plus haut).
+- **Accessibilité** vérifiée mais pas auditée, et pas encore essayée avec
+  un lecteur d'écran ([ACCESSIBILITE.md](ACCESSIBILITE.md)).
 
 ## Structure
 
@@ -373,8 +407,10 @@ src/rag_local/
   evaluation.py   mesure de la recherche, des réponses et de leur appui
   __main__.py     ligne de commande rag-local
 tests/            tests unitaires, API et accessibilité (sans GPU ni Ollama)
+outils/           vérification d'accessibilité dans le navigateur
 corpus/           documents fictifs, questions annotées, guide
 docs/             vos documents (non versionnés)
+ACCESSIBILITE.md  ce qui a été vérifié, critère RGAA par critère, et ce qui reste
 ```
 
 ## Tests et qualité
@@ -384,7 +420,7 @@ python -m pip install -e ".[dev]"
 python -m pytest --cov
 ```
 
-68 tests, sans GPU ni réseau : un faux client remplace Ollama. Ils couvrent
+71 tests, sans GPU ni réseau : un faux client remplace Ollama. Ils couvrent
 l'index incrémental, la recherche, la reconnaissance du refus, la
 recherche de la citation (recopie imparfaite, phrases non contiguës,
 citation introuvable ou illisible), l'API web

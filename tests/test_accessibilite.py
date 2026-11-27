@@ -50,6 +50,36 @@ def test_lien_d_evitement_et_annonces(page):
     assert any(attrs.get("role") == "status" for _, attrs in page)
 
 
+def test_references_aria_existent(page):
+    """aria-describedby et aria-labelledby ne pointent que vers des éléments présents."""
+    identifiants = {attrs.get("id") for _, attrs in page}
+    for _, attrs in page:
+        for cle in ("aria-describedby", "aria-labelledby"):
+            for cible in attrs.get(cle, "").split():
+                assert cible in identifiants, f"{cle}={cible}"
+
+
+def test_erreurs_de_saisie_ecrites_par_la_page(page):
+    """La page affiche ses propres messages d'erreur, reliés au champ par le script,
+    plutôt que la bulle du navigateur qui disparaît au bout de quelques secondes."""
+    script = (STATIQUE / "app.js").read_text(encoding="utf-8")
+    formulaires = [attrs for tag, attrs in page if tag == "form"]
+    assert formulaires and all("novalidate" in attrs for attrs in formulaires)
+    zones = [attrs for _, attrs in page if "erreur-champ" in (attrs.get("class") or "")]
+    assert {z["id"] for z in zones} == {"erreur-question", "erreur-fichiers"}
+    for zone in zones:
+        assert "hidden" in zone
+        assert f'element("{zone["id"]}")' in script
+    assert 'setAttribute("aria-invalid", "true")' in script
+
+
+def test_champ_obligatoire_signale(page):
+    question = next(attrs for tag, attrs in page if tag == "textarea")
+    assert "required" in question
+    texte = (STATIQUE / "index.html").read_text(encoding="utf-8")
+    assert "Votre question (obligatoire)" in texte
+
+
 def test_aucune_ressource_externe(page):
     """La page fonctionne hors ligne : rien n'est chargé depuis Internet."""
     for _, attrs in page:

@@ -20,11 +20,12 @@
     <main>
       <section aria-labelledby="titre-question">
         <h2 id="titre-question">Poser une question</h2>
-        <form id="formulaire-question">
-          <label for="question">Votre question</label>
+        <form id="formulaire-question" novalidate>
+          <label for="question">Votre question (obligatoire)</label>
           <textarea id="question" name="question" rows="3" maxlength="2000" required
                     aria-describedby="aide-question"></textarea>
           <p id="aide-question" class="aide">Entrée pour envoyer, Maj + Entrée pour aller à la ligne.</p>
+          <p id="erreur-question" class="erreur-champ" hidden></p>
           <button type="submit" id="envoyer">Envoyer</button>
         </form>
       </section>
@@ -49,9 +50,13 @@
       <h2 id="titre-documents">Documents</h2>
       <ul id="documents" class="documents"></ul>
 
-      <form id="formulaire-depot">
-        <label for="fichiers">Ajouter des documents (.txt, .md, .pdf)</label>
-        <input type="file" id="fichiers" name="fichiers" multiple accept=".txt,.md,.pdf">
+      <form id="formulaire-depot" novalidate>
+        <label for="fichiers">Ajouter des documents</label>
+        <input type="file" id="fichiers" name="fichiers" multiple accept=".txt,.md,.pdf"
+               aria-describedby="aide-fichiers">
+        <p id="aide-fichiers" class="aide">Formats .txt, .md ou .pdf (PDF avec du texte, pas scanné),
+          20 Mo au plus par fichier.</p>
+        <p id="erreur-fichiers" class="erreur-champ" hidden></p>
         <button type="submit">Ajouter</button>
       </form>
       <button type="button" id="indexer">Mettre à jour l'index</button>

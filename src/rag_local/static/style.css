@@ -40,6 +40,9 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 1rem;
   line-height: 1.5;
+  /* Un nom de fichier ou une adresse très longs passent à la ligne au lieu de
+     déborder (lecture à 320 px de large, ou zoom à 400 %). */
+  overflow-wrap: anywhere;
 }
 
 h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
@@ -73,6 +76,10 @@ textarea, input[type="file"] {
   border-radius: .375rem;
   padding: .5rem;
 }
+/* Erreur de saisie : le message en toutes lettres, la bordure en plus. */
+.erreur-champ { color: var(--erreur); font-weight: 600; margin: .25rem 0; }
+[aria-invalid="true"] { border: 2px solid var(--erreur); }
+
 button {
   font: inherit;
   font-weight: 600;

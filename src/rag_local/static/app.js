@@ -19,6 +19,45 @@ async function erreurHttp(reponse) {
   }
 }
 
+// fetch lève une TypeError quand le serveur ne répond pas du tout.
+function messageErreur(erreur) {
+  return erreur instanceof TypeError
+    ? "Le serveur ne répond pas : vérifiez qu'il est lancé, puis réessayez."
+    : `Erreur : ${erreur.message}`;
+}
+
+// Une seule zone d'annonce pour les lecteurs d'écran (aria-live="polite"). On la
+// vide avant d'écrire, pour qu'un message identique soit annoncé de nouveau.
+function annoncer(texte) {
+  const zone = element("annonce");
+  zone.textContent = "";
+  setTimeout(() => {
+    zone.textContent = texte;
+  }, 100);
+}
+
+// Erreur de saisie : message visible sous le champ, relié au champ
+// (aria-describedby, aria-invalid), et annoncé. Il disparaît quand la saisie change.
+function signalerErreur(champ, zone, message) {
+  zone.textContent = message;
+  zone.hidden = false;
+  champ.setAttribute("aria-invalid", "true");
+  const decrit = (champ.getAttribute("aria-describedby") || "").split(" ").filter(Boolean);
+  if (!decrit.includes(zone.id)) champ.setAttribute("aria-describedby", [...decrit, zone.id].join(" "));
+  // Le focus sur le champ fait lire son nom et le message ; s'il y est déjà, on annonce.
+  if (document.activeElement === champ) annoncer(message);
+  else champ.focus();
+}
+
+function effacerErreur(champ, zone) {
+  if (zone.hidden) return;
+  zone.hidden = true;
+  zone.textContent = "";
+  champ.removeAttribute("aria-invalid");
+  const decrit = (champ.getAttribute("aria-describedby") || "").split(" ").filter((id) => id && id !== zone.id);
+  champ.setAttribute("aria-describedby", decrit.join(" "));
+}
+
 // ------------------------------------------------------------------- état
 async function chargerEtat() {
   const etat = element("etat");
@@ -68,7 +107,7 @@ function afficherSources(passages) {
   passagesAffiches = passages;
   const liste = element("sources");
   liste.replaceChildren();
-  for (const passage of passages) {
+  for (const [i, passage] of passages.entries()) {
     const li = document.createElement("li");
     const titre = document.createElement("p");
     const nom = document.createElement("strong");
@@ -78,8 +117,13 @@ function afficherSources(passages) {
     score.textContent = ` — ressemblance ${passage.score.toFixed(2).replace(".", ",")}`;
     titre.append(nom, score);
     const details = document.createElement("details");
+    // « Lire le passage 2 (charte.md) » : un nom distinct pour chaque bouton, la
+    // source n'étant lue que par les lecteurs d'écran (elle est affichée juste au-dessus).
     const resume = document.createElement("summary");
-    resume.textContent = "Lire le passage";
+    const source = document.createElement("span");
+    source.className = "visuellement-masque";
+    source.textContent = ` (${passage.source})`;
+    resume.append(`Lire le passage ${i + 1}`, source);
     const citation = document.createElement("blockquote");
     citation.textContent = passage.texte;
     details.append(resume, citation);
@@ -126,29 +170,50 @@ function afficherAppui(evenement) {
   li.querySelector("details").open = true;
 }
 
-async function poser(question) {
-  const zone = element("zone-reponse");
+// L'appui tel qu'il sera annoncé : « Phrase qui appuie la réponse (…) : « … » ».
+function texteAppui() {
+  const zone = element("appui");
+  if (zone.hidden) return "";
+  const intro = zone.querySelector("p");
+  const citation = zone.querySelector("blockquote");
+  return intro && citation ? `${intro.textContent} « ${citation.textContent} »` : zone.textContent;
+}
+
+// L'erreur s'affiche à la place de la réponse, pas ailleurs dans la page.
+function erreurReponse(message) {
   const reponse = element("reponse");
-  const annonce = element("annonce");
-  zone.hidden = false;
+  reponse.textContent = message;
+  reponse.className = "reponse erreur";
+  element("duree").textContent = "";
+  annoncer(message);
+}
+
+async function poser(question) {
+  const reponse = element("reponse");
+  element("zone-reponse").hidden = false;
   reponse.textContent = "";
   reponse.className = "reponse";
   element("appui").hidden = true;
   element("appui").replaceChildren();
   element("duree").textContent = "Recherche dans les documents…";
   element("sources").replaceChildren();
-  annonce.textContent = "";
+  annoncer("Recherche dans les documents…");
 
+  try {
+    await lireReponse(question);
+  } catch (erreur) {
+    erreurReponse(messageErreur(erreur));
+  }
+}
+
+async function lireReponse(question) {
   const resultat = await fetch("/api/question", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question }),
   });
   if (!resultat.ok) {
-    reponse.textContent = await erreurHttp(resultat);
-    reponse.classList.add("erreur");
-    element("duree").textContent = "";
-    annonce.textContent = reponse.textContent;
+    erreurReponse(await erreurHttp(resultat));
     return;
   }
 
@@ -187,16 +252,11 @@ function traiter(evenement) {
     case "fin": {
       if (evenement.refus) reponse.classList.add("refus");
       element("duree").textContent = `Réponse en ${String(evenement.duree_s).replace(".", ",")} s.`;
-      const appui = element("appui");
-      element("annonce").textContent =
-        `Réponse : ${reponse.textContent}` + (appui.hidden ? "" : ` ${appui.textContent}`);
+      annoncer(`Réponse : ${reponse.textContent} ${texteAppui()}`.trim());
       break;
     }
     case "erreur":
-      reponse.textContent = `Erreur : ${evenement.message}`;
-      reponse.classList.add("erreur");
-      element("duree").textContent = "";
-      element("annonce").textContent = reponse.textContent;
+      erreurReponse(`Erreur : ${evenement.message}`);
       break;
   }
 }
@@ -219,6 +279,7 @@ async function deposer(fichiers) {
   }
   for (const refus of resultat.refuses) morceaux.push(`Refusé : ${refus.nom} (${refus.motif}).`);
   message.textContent = morceaux.join(" ");
+  element("fichiers").value = "";
   await chargerEtat();
 }
 
@@ -238,14 +299,16 @@ async function indexer() {
 }
 
 // -------------------------------------------------------------- démarrage
-function occuper(bouton_, action) {
+// Un bouton occupé ignore les nouveaux clics ; l'erreur éventuelle s'affiche
+// près de l'action qui l'a causée (siErreur).
+function occuper(bouton_, action, siErreur) {
   return async (...args) => {
     if (bouton_.dataset.occupe) return;
     bouton(bouton_, true);
     try {
       await action(...args);
     } catch (erreur) {
-      element("message-documents").textContent = `Erreur : ${erreur.message}`;
+      siErreur(messageErreur(erreur));
     } finally {
       bouton(bouton_, false);
     }
@@ -254,14 +317,20 @@ function occuper(bouton_, action) {
 
 document.addEventListener("DOMContentLoaded", () => {
   const champ = element("question");
-  const envoyer = element("envoyer");
-  const lancer = occuper(envoyer, poser);
+  const erreurQuestion = element("erreur-question");
+  const lancer = occuper(element("envoyer"), poser, erreurReponse);
 
   element("formulaire-question").addEventListener("submit", (evenement) => {
     evenement.preventDefault();
     const question = champ.value.trim();
-    if (question) lancer(question);
+    if (!question) {
+      signalerErreur(champ, erreurQuestion, "Saisissez une question avant d'envoyer.");
+      return;
+    }
+    effacerErreur(champ, erreurQuestion);
+    lancer(question);
   });
+  champ.addEventListener("input", () => effacerErreur(champ, erreurQuestion));
   champ.addEventListener("keydown", (evenement) => {
     if (evenement.key === "Enter" && !evenement.shiftKey && !evenement.isComposing) {
       evenement.preventDefault();
@@ -269,14 +338,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  const ajouter = element("formulaire-depot").querySelector("button");
+  const fichiers = element("fichiers");
+  const erreurFichiers = element("erreur-fichiers");
+  const messageDocuments = (texte) => {
+    element("message-documents").textContent = texte;
+  };
+  const ajouter = occuper(element("formulaire-depot").querySelector("button"), deposer, messageDocuments);
   element("formulaire-depot").addEventListener("submit", (evenement) => {
     evenement.preventDefault();
-    const fichiers = element("fichiers").files;
-    if (fichiers.length) occuper(ajouter, deposer)(fichiers);
+    if (!fichiers.files.length) {
+      signalerErreur(fichiers, erreurFichiers, "Choisissez au moins un fichier à ajouter.");
+      return;
+    }
+    effacerErreur(fichiers, erreurFichiers);
+    ajouter(fichiers.files);
   });
+  fichiers.addEventListener("change", () => effacerErreur(fichiers, erreurFichiers));
   const boutonIndex = element("indexer");
-  boutonIndex.addEventListener("click", occuper(boutonIndex, indexer));
+  boutonIndex.addEventListener("click", occuper(boutonIndex, indexer, messageDocuments));
 
   chargerEtat();
 });
